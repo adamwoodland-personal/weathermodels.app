@@ -40,8 +40,13 @@ agree and where they don't. Free, no account, no adverts, nothing tracked.
   ahead) and the archive API pinned to ERA5 reanalysis (what actually happened). ERA5 lags
   about five days, so the scored period ends roughly a week ago.
 - Three keyless, CORS-enabled Open-Meteo requests per place: daily variables (the table renders
-  from this alone), hourly variables (fills the expandable rows), and the previous-runs API
-  (trend arrows). All models come back in one response each.
+  from this first), hourly variables (fills the expandable rows and the day totals), and the
+  previous-runs API (trend arrows). All models come back in one response each.
+- The day totals (rain, snow, sunshine, wet hours) are added up per model from the same hours the
+  expanded rows show, so a day always matches its own rows; until the hourly data arrives those
+  cells show a dash. Open-Meteo's own daily totals for the 3- and 6-hourly models (ECMWF IFS,
+  AIFS, CMA, JMA) cover a window that starts 4–7 hours before local midnight, so they are used
+  only if the hourly request fails.
 - Aggregation is per cell across whichever models are switched on: arithmetic min/mean/max for
   numbers, a vector (circular) mean for wind direction, the mode for weather codes. In the
   3-hour view rain, snow and sunshine are summed per model and everything else averaged.

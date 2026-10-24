@@ -149,6 +149,18 @@
   });
   function clean(v, name) { return CLAMP0[name] && v < 0 ? 0 : v; }
 
+  // Day totals are added up from the day's own hours, not taken from Open-Meteo's daily answer.
+  // For the 3- and 6-hourly models (ECMWF IFS, AIFS, CMA, JMA) its daily total covers a window that
+  // starts 4-7 hours before local midnight, so rain moved between days and a day's figure did not
+  // match its own hour rows (found 2026-10-24); for the hourly models the two agree exactly. Until
+  // the hourly data arrives these cells show a dash. Wet hours counts the hours with any precipitation,
+  // which is how Open-Meteo counts them. dailyVar -> {from: hourlyVar, count}
+  var FROM_HOURS = {};
+  COLUMNS.forEach(function (c) {
+    if (c.hourly && KINDS[c.kind].agg === 'sum') FROM_HOURS[c.daily] = { from: c.hourly };
+  });
+  FROM_HOURS.precipitation_hours = { from: 'precipitation', count: true };
+
   var COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
   var WMO = {
     0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Overcast', 45: 'Fog', 48: 'Rime fog',
@@ -457,20 +469,21 @@
   }
 
   /* ---------------- normalise ----------------
-   * data.days[i] = { date, vals: {dailyVar: {modelId: v}}, hours: [{time, night, vals: {hourlyVar: {modelId: v}}}],
-   *                  prev: {colKey: {lag: {modelId: dayValue}}} }
+   * data.days[i] = { date, vals: {dailyVar: {modelId: v}}, api: {dailyVar: {modelId: v}} (FROM_HOURS only),
+   *                  hours: [{time, night, vals: {hourlyVar: {modelId: v}}}], prev: {colKey: {lag: {modelId: dayValue}}} }
    */
   function normaliseDaily(j) {
     var d = j.daily;
     var days = d.time.map(function (date) {
-      var day = { date: date, vals: {}, hours: [], prev: {} };
-      DAILY_VARS.forEach(function (v) { day.vals[v] = {}; });
+      var day = { date: date, vals: {}, api: {}, hours: [], prev: {} };
+      DAILY_VARS.forEach(function (v) { day.vals[v] = {}; if (FROM_HOURS[v]) day.api[v] = {}; });
       return day;
     });
+    // the FROM_HOURS totals wait in `api` (empty cells until attachHourly fills them; a fallback if it fails)
     DAILY_VARS.forEach(function (v) {
       MODELS.forEach(function (m) {
         var arr = d[v + '_' + m.id] || [];
-        days.forEach(function (day, i) { if (arr[i] != null) day.vals[v][m.id] = clean(arr[i], v); });
+        days.forEach(function (day, i) { if (arr[i] != null) (FROM_HOURS[v] ? day.api : day.vals)[v][m.id] = clean(arr[i], v); });
       });
     });
     var horizon = {};
@@ -500,6 +513,31 @@
         });
       });
       day.hours.push(hour);
+    });
+    // each model's day totals from the same hours the rows show; a model missing any hour of the day
+    // gets no total rather than a short one
+    state.data.days.forEach(function (day) {
+      Object.keys(FROM_HOURS).forEach(function (v) {
+        var f = FROM_HOURS[v];
+        day.vals[v] = {};
+        if (!day.hours.length) return;
+        MODELS.forEach(function (m) {
+          var total = 0;
+          for (var i = 0; i < day.hours.length; i++) {
+            var x = day.hours[i].vals[f.from][m.id];
+            if (x === undefined) return;
+            total += f.count ? (x > 0 ? 1 : 0) : x;
+          }
+          day.vals[v][m.id] = Math.round(total * 1e6) / 1e6;   // drop float noise from the additions
+        });
+      });
+    });
+  }
+
+  // hourly request failed: show Open-Meteo's own daily totals rather than dashes (there are no hour rows to clash with)
+  function dailyTotalsFallback() {
+    state.data.days.forEach(function (day) {
+      Object.keys(FROM_HOURS).forEach(function (v) { day.vals[v] = day.api[v]; });
     });
   }
 
@@ -785,11 +823,12 @@
     return kind.fmt(v, imp) + (kind.sign || '');
   }
 
-  // Worded as a change only, never "was X, now Y". The earlier runs only exist as hourly values,
-  // so both ends of the comparison are built from hourly figures - and for the 3- and 6-hourly
-  // models (JMA most of all) Open-Meteo's hourly series can add up to something different from its
-  // own daily figure, which is what the cell shows. Quoting the hourly-based "now" next to the
-  // cell's number read as a contradiction (2026-10-06: rain "now 2.0" beside a cell showing 1.5).
+  // Worded as a change only, never "was X, now Y". The earlier runs only exist as hourly values from
+  // the previous-runs API, so both ends of the comparison are built from its hourly figures, which
+  // need not match the cell: the High/Low cells come from the daily answer, and even the totals
+  // (built from the forecast API's own hours since 2026-10-24, see FROM_HOURS) come from a different
+  // API. Quoting the hourly-based "now" next to the cell's number read as a contradiction
+  // (2026-10-06: rain "now 2.0" beside a cell showing 1.5).
   function driftText(col, dr) {
     var kind = KINDS[col.kind], imp = imperial();
     if (!dr) return state.prevReady ? 'No earlier run reaches this day yet.' : '';
@@ -819,7 +858,10 @@
     var d = describe(col, values, hourly, day);
     var kind = d.kind;
     var attrs = (span > 1 ? ' colspan="' + span + '"' : '') + ref;
-    if (!d.n) return '<td class="stat none ' + kind.cls + '"' + attrs + '>—</td>';
+    if (!d.n) {
+      var waiting = !hourly && !state.hourlyReady && FROM_HOURS[col.daily];   // a day total still to be added up
+      return '<td class="stat none ' + kind.cls + '"' + attrs + (waiting ? ' title="Waiting for the hourly data"' : '') + '>—</td>';
+    }
     attrs += ' tabindex="0" role="button" aria-haspopup="dialog"';   // keyboard: Enter/Space opens the popover
     var cls = 'stat ' + kind.cls + (d.wide ? ' wide' : '') + (d.zero ? ' zero' : '');
     var title = ' title="' + esc(tooltip(col, d)) + '"';
@@ -1334,6 +1376,8 @@
         if (token !== state.token) return;
         state.hourlyReady = true;
         state.hourlyError = 'Hourly detail unavailable: ' + e.message;
+        dailyTotalsFallback();
+        renderTable();
         applyTheme();   // fall back to today's daily sky
         loadingStatus();
       });
