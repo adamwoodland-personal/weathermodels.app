@@ -470,6 +470,12 @@ main:focus { outline: none; }
   overflow: visible;   /* so the sticky header can pin to the viewport; phones scroll sideways instead */
 }
 .fc-wrap .fc { border-radius: var(--radius); overflow: hidden; }
+/* too many columns for the card (fitTable in app.js): tighter cells, then a sideways scroll as on phones */
+.fc-wrap.tight .fc th, .fc-wrap.tight .fc td { padding-left: 6px; padding-right: 6px; }
+.fc-wrap.scroll { overflow-x: auto; }
+.fc-wrap.scroll .fc { overflow: visible; }
+.fc-wrap.scroll .fc thead th { position: static; }
+.fc-wrap.scroll .fc thead th.when { position: sticky; }
 
 .fc {
   width: 100%;
@@ -738,7 +744,7 @@ main:focus { outline: none; }
   body { background: #fff; font-size: 12px; }
   .skip, .tabs, .loc, .bar, .bar-toggle, .panel, #pop, .about, .footer, .status, .chev { display: none !important; }
   .top { padding: 0 0 6px; }
-  .fc-wrap { box-shadow: none; border-color: #999; margin: 0; overflow: visible; }
+  .fc-wrap, .fc-wrap.scroll { box-shadow: none; border-color: #999; margin: 0; overflow: visible; }
   .fc thead th { position: static; }
   .fc th, .fc td { padding: 0 6px; }
   .fc tr.d td { height: 26px; }

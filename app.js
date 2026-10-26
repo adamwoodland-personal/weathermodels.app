@@ -979,6 +979,21 @@
     var btn = $('#expandAll');
     btn.textContent = shown && opened === shown ? 'Collapse all' : 'Expand all';
     btn.disabled = !shown;
+    fitTable();
+  }
+
+  // Cells don't wrap, so with many columns on the table can be wider than its card and run past the
+  // card's edge (seen only where a row paints a background, such as the weekend shading). Tighter cells
+  // first; if it still doesn't fit, the card scrolls sideways as on phones, and the header stops
+  // pinning to the top of the screen, which a sideways-scrolling box can't do.
+  function fitTable() {
+    var table = $('#fcTable'), wrap = table.parentNode;
+    wrap.classList.remove('tight', 'scroll');
+    if (!state.data) return;
+    var over = function () { return table.getBoundingClientRect().width > wrap.clientWidth + 0.5; };
+    if (!over()) return;
+    wrap.classList.add('tight');
+    if (over()) wrap.classList.add('scroll');
   }
 
   /* ---------------- render: popover ---------------- */
@@ -1571,7 +1586,7 @@
     document.addEventListener('keydown', function (ev) {
       if (ev.key === 'Escape') { hideResults(); closeColumns(); closePop(); }
     });
-    window.addEventListener('resize', closePop);
+    window.addEventListener('resize', function () { closePop(); fitTable(); });
 
     $('#units').addEventListener('click', function (ev) {
       var b = ev.target.closest('button[data-units]');
