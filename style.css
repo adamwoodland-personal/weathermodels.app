@@ -672,6 +672,7 @@ main:focus { outline: none; }
 .status { margin: 0; padding: 12px; color: var(--dim); text-align: center; }
 .status:empty { display: none; }
 .status.err { color: var(--err); }
+.status .again { margin-left: 6px; }
 
 /* collapsed About / FAQ: present for readers and crawlers, out of the way for everyone else */
 /* link to the accuracy league table, between the settings and About */

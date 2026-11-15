@@ -194,6 +194,8 @@
     fetchedAt: 0,         // when the daily forecast last arrived (drives the 'updated' note and re-fetching)
     nowShown: '',         // the hour key the table was last rendered for
     open: {},             // date -> boolean (expanded)
+    again: 0,             // automatic re-tries since the forecast last arrived (or was asked for by hand)
+    againDue: false,      // a re-try came due while the tab was hidden: it runs when the tab is shown
     token: 0              // bumps on every refresh; stale responses are dropped
   };
 
@@ -357,10 +359,69 @@
     return u;
   }
 
+  /* Open-Meteo answers in about a second, but a new connection to its server sometimes stalls: it
+   * opens, then nothing comes back until it is reset many seconds later (a regional server dropping
+   * connections did this for days in November 2026, open-meteo/open-meteo issue 2329), and with no
+   * limit here the page sat waiting for as long as the browser cared to. So:
+   * - A request that has had no answer after HEDGE_MS is asked again alongside the first, up to
+   *   TRIES at once, and the first good answer wins; the rest are dropped. In Chrome and Firefox a
+   *   second request gets a connection of its own, so one stalled connection costs HEDGE_MS.
+   * - Some browsers instead queue the second request behind the connection still being made (the
+   *   WebKit build the tests run does). So after WAVE_MS with no answer everything waiting is
+   *   dropped, which lets go of that connection, and the asking starts afresh.
+   * - One that fails outright is asked again after PAUSE_MS. A refusal (400s: a bad request, the
+   *   rate limit) is not asked again.
+   * - After GIVE_UP_MS with no answer, or when every asking of a wave has failed, the request fails
+   *   with `again` set, which tells loadFailed() that Open-Meteo is in trouble and worth asking later.
+   * `cache: 'no-store'`: the answers carry no caching headers anyway, and a browser can hold a
+   * second request for the same address in a queue behind the first while its cache entry is open. */
+  var HEDGE_MS = 2500, TRIES = 3, WAVE_MS = 7500, PAUSE_MS = 700, GIVE_UP_MS = 20000;
+
   function getJson(u, what) {
-    return fetch(u.toString()).then(function (r) {
-      if (!r.ok) throw new Error(what + ' answered ' + r.status);
-      return r.json();
+    var url = u.toString();
+    return new Promise(function (resolve, reject) {
+      var ctls = [], wave = 0, started = 0, live = 0, over = false, hedge = null, next = null, limit = null;
+      function drop() {
+        ctls.forEach(function (c) { try { c.abort(); } catch (e) { /* settled already */ } });
+        ctls = [];
+      }
+      function end(fn, v) {
+        if (over) return;
+        over = true;
+        clearTimeout(hedge); clearTimeout(next); clearTimeout(limit);
+        drop();
+        fn(v);
+      }
+      function quiet() { var e = new Error('Open-Meteo is not answering'); e.again = true; return e; }
+      function attempt() {
+        if (over || started >= TRIES) return;
+        var mine = wave;
+        started++; live++;
+        var ctl = window.AbortController ? new AbortController() : null;
+        if (ctl) ctls.push(ctl);
+        clearTimeout(hedge);
+        if (started < TRIES) hedge = setTimeout(attempt, HEDGE_MS);
+        fetch(url, { cache: 'no-store', signal: ctl ? ctl.signal : undefined }).then(function (r) {
+          if (!r.ok) { var e = new Error(what + ' answered ' + r.status); e.status = r.status; throw e; }
+          return r.json();
+        }).then(function (j) { end(resolve, j); }, function (e) {
+          if (over || mine !== wave) return;   // dropped with its wave
+          live--;
+          if (e.status >= 400 && e.status < 500) { end(reject, e); return; }
+          if (started < TRIES) { clearTimeout(hedge); hedge = setTimeout(attempt, PAUSE_MS); return; }
+          if (!live) { if (e.status) e.again = true; end(reject, e.status ? e : quiet()); }
+        });
+      }
+      function afresh() {
+        if (over) return;
+        wave++;
+        drop();
+        started = live = 0;
+        attempt();
+      }
+      next = setTimeout(afresh, WAVE_MS);
+      limit = setTimeout(function () { end(reject, quiet()); }, GIVE_UP_MS);
+      attempt();
     });
   }
 
@@ -1296,10 +1357,18 @@
     meta.title = full.join(' · ');
   }
 
-  function setStatus(msg, err) {
+  // again: a function for a "Try again" button after the message
+  function setStatus(msg, err, again) {
     var e = $('#status');
     e.textContent = msg || '';
     e.className = 'status' + (err ? ' err' : '');
+    if (again) {
+      var b = el('button', 'ghost again', 'Try again');
+      b.type = 'button';
+      b.addEventListener('click', again);
+      e.appendChild(document.createTextNode(' '));
+      e.appendChild(b);
+    }
   }
 
   // after a few seconds of waiting, say so (Open-Meteo occasionally takes 10 s+)
@@ -1352,9 +1421,30 @@
     });
   }
 
-  function refresh() {
+  // The forecast did not arrive. If Open-Meteo is in trouble (not answering, or a server error),
+  // rather than refusing the request, the page asks again by itself every AGAIN_MS while the tab is
+  // on show, AGAIN_MAX times at most; the button asks at once.
+  var AGAIN_MS = 30000, AGAIN_MAX = 10;
+  function loadFailed(token, e) {
+    var auto = !!e.again && navigator.onLine !== false && state.again < AGAIN_MAX;
+    var why = navigator.onLine === false ? 'this device is offline.'
+      : e.again && !e.status ? 'Open-Meteo, which supplies it, is not answering.' : e.message + '.';
+    setStatus('Could not load the forecast: ' + why + (auto ? ' Trying again every ' + AGAIN_MS / 1000 + ' seconds.' : ''), true, function () { refresh(); });
+    if (!auto) return;
+    setTimeout(function () {
+      if (token !== state.token) return;   // a new place, or loaded by hand, meanwhile
+      if (document.hidden) { state.againDue = true; return; }
+      state.again++;
+      refresh(true);
+    }, AGAIN_MS);
+  }
+
+  // auto: one of loadFailed()'s own re-tries, which count towards AGAIN_MAX
+  function refresh(auto) {
     var token = ++state.token;
     var place = state.place;
+    if (!auto) state.again = 0;
+    state.againDue = false;
     closePop();
     setStatus('Fetching ' + MODELS.length + ' models…');
     armSlowNote(token);
@@ -1371,6 +1461,7 @@
       if (token !== state.token) return;
       state.data = normaliseDaily(j);
       state.fetchedAt = Date.now();
+      state.again = 0;
       state.nowShown = nowKey(state.data.tz);
       renderPlace();
       renderSources();
@@ -1401,7 +1492,7 @@
       loadingStatus();
     }).catch(function (e) {
       if (token !== state.token) return;
-      setStatus('Could not load the forecast: ' + e.message, true);
+      loadFailed(token, e);
     });
   }
 
@@ -1707,7 +1798,13 @@
         if (k !== state.nowShown) { state.nowShown = k; closePop(); renderTable(); applyTheme(); }
       }
     }, 60 * 1000);
-    document.addEventListener('visibilitychange', function () { if (!document.hidden) maybeRefresh(RETURN_MS); });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) return;
+      if (state.againDue) { state.again++; refresh(true); }   // a re-try that came due while the tab was hidden
+      else maybeRefresh(RETURN_MS);
+    });
+    // back online after a load that failed for want of a connection
+    window.addEventListener('online', function () { if (state.place && !state.data && $('#status').classList.contains('err')) refresh(); });
 
     if (state.place) { save(); refresh(); }
     else guessPlace().then(function (p) { state.place = rememberPlace(p); state.savedPlace = state.place; save(); refresh(); });
