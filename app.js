@@ -61,6 +61,8 @@
    *           Only variables Open-Meteo's previous-runs archive keeps can have one: it has no
    *           precipitation_probability or uv_index, and wet hours, wind direction and the weather
    *           code are not up/down quantities.
+   * omit   -> model ids whose values this column leaves out, for a model whose figures do not hold
+   *           together (dropped as the hourly answer is read, so its hour rows and day value go too).
    * desc   -> the header tooltip and the Columns panel text.
    */
   function round(v) { return String(Math.round(v)); }
@@ -118,6 +120,17 @@
     { key: 'cloud',     label: 'Cloud',      kind: 'pct',    daily: 'cloud_cover_mean',              hourly: 'cloud_cover',               wide: 40,
       drift: { agg: 'mean', thr: 15, words: ['cloudier', 'clearer'] },
       desc: 'Total cloud cover as a share of the sky, averaged over the day. The small arrow shows whether the models’ mean has moved by 15% or more since their run three days ago.' },
+    // The three layers: Open-Meteo has no daily value for them, so the day is the mean of its own hours
+    // (fromHours), and its archive of earlier runs keeps none, so no trend arrow. GEM is left out: its
+    // high cloud stays near 0 where the others reach 86-100%, and its low cloud can read 57% beside a
+    // total of 3% (checked at London, New York and Brisbane, 2026-11-18), so it set every cell's minimum
+    // and flagged a disagreement on any day with high cloud.
+    { key: 'cloudLow',  label: 'Low cloud',  kind: 'pct',    daily: 'cloud_cover_low_mean', fromHours: true, hourly: 'cloud_cover_low',  wide: 40, omit: ['gem_seamless'],
+      desc: 'Low cloud and fog, up to about 3 km: the grey layers that hide the sun and bring drizzle. Averaged over the day’s hours. The layers overlap as seen from the ground, so the three do not add up to the total Cloud. GEM is left out: its layers do not match its own total.' },
+    { key: 'cloudMid',  label: 'Mid cloud',  kind: 'pct',    daily: 'cloud_cover_mid_mean', fromHours: true, hourly: 'cloud_cover_mid',  wide: 40, omit: ['gem_seamless'],
+      desc: 'Mid-level cloud, about 3 to 8 km up: sheets and patches that often dim the sun to a pale disc. Averaged over the day’s hours. The layers overlap as seen from the ground, so the three do not add up to the total Cloud. GEM is left out: its layers do not match its own total.' },
+    { key: 'cloudHigh', label: 'High cloud', kind: 'pct',    daily: 'cloud_cover_high_mean', fromHours: true, hourly: 'cloud_cover_high', wide: 40, omit: ['gem_seamless'],
+      desc: 'High cloud above about 8 km: thin ice cloud such as cirrus, which the sun often shines through. Averaged over the day’s hours. The layers overlap as seen from the ground, so the three do not add up to the total Cloud. GEM is left out: its layers do not match its own total.' },
     { key: 'humidity',  label: 'Humidity',   kind: 'pct',    daily: 'relative_humidity_2m_mean',     hourly: 'relative_humidity_2m',      wide: 25,
       drift: { agg: 'mean', thr: 8, words: ['more humid', 'less humid'] },
       desc: 'Relative humidity at 2 m, averaged over the day. The small arrow shows whether the models’ mean has moved by 8% or more since their run three days ago.' },
@@ -139,9 +152,15 @@
   COLUMNS.forEach(function (c) { COL[c.key] = c; });
   var DEFAULT_COLS = ['high', 'low', 'rain', 'pop', 'wind', 'sky'];
   var DAILY_VARS = uniq(COLUMNS.map(function (c) { return c.daily; }));
+  // what the daily request asks for: the fromHours names are this page's own, not Open-Meteo's
+  var API_DAILY_VARS = uniq(COLUMNS.filter(function (c) { return !c.fromHours; }).map(function (c) { return c.daily; }));
   var HOURLY_VARS = uniq(COLUMNS.map(function (c) { return c.hourly; }));
   var HKIND = {};   // hourly variable -> kind name (for 3-hour aggregation)
   COLUMNS.forEach(function (c) { if (c.hourly && !HKIND[c.hourly]) HKIND[c.hourly] = c.hkind || c.kind; });
+  var OMIT = {};    // hourly variable -> {modelId: true} for the models a column leaves out (`omit`)
+  COLUMNS.forEach(function (c) {
+    (c.omit || []).forEach(function (id) { (OMIT[c.hourly] = OMIT[c.hourly] || {})[id] = true; });
+  });
   // amounts can come back a hair negative from Open-Meteo's interpolation of accumulated fields
   var CLAMP0 = {};
   COLUMNS.forEach(function (c) {
@@ -154,10 +173,13 @@
   // starts 4-7 hours before local midnight, so rain moved between days and a day's figure did not
   // match its own hour rows (found 2026-10-24); for the hourly models the two agree exactly. Until
   // the hourly data arrives these cells show a dash. Wet hours counts the hours with any precipitation,
-  // which is how Open-Meteo counts them. dailyVar -> {from: hourlyVar, count}
+  // which is how Open-Meteo counts them. The cloud layers (fromHours) have no daily value at all, so
+  // theirs is the mean of the day's hours, and they stay dashes if the hourly request fails.
+  // dailyVar -> {from: hourlyVar, count, mean}
   var FROM_HOURS = {};
   COLUMNS.forEach(function (c) {
     if (c.hourly && KINDS[c.kind].agg === 'sum') FROM_HOURS[c.daily] = { from: c.hourly };
+    if (c.fromHours) FROM_HOURS[c.daily] = { from: c.hourly, mean: true };
   });
   FROM_HOURS.precipitation_hours = { from: 'precipitation', count: true };
 
@@ -427,7 +449,7 @@
 
   function fetchDaily(place) {
     var u = baseUrl(API, place);
-    u.searchParams.set('daily', DAILY_VARS.join(','));
+    u.searchParams.set('daily', API_DAILY_VARS.join(','));
     return getJson(u, 'Open-Meteo');
   }
 
@@ -570,7 +592,7 @@
         hour.vals[v] = {};
         MODELS.forEach(function (m) {
           var x = (h[v + '_' + m.id] || [])[i];
-          if (x != null) hour.vals[v][m.id] = clean(x, v);
+          if (x != null && !(OMIT[v] && OMIT[v][m.id])) hour.vals[v][m.id] = clean(x, v);
         });
       });
       day.hours.push(hour);
@@ -589,6 +611,7 @@
             if (x === undefined) return;
             total += f.count ? (x > 0 ? 1 : 0) : x;
           }
+          if (f.mean) total /= day.hours.length;
           day.vals[v][m.id] = Math.round(total * 1e6) / 1e6;   // drop float noise from the additions
         });
       });
