@@ -85,7 +85,7 @@
     uv:     { cls: 'pct', sign: '',  scale: 1,        agg: 'mean', unit: function () { return 'index'; }, fmt: function (v) { return v.toFixed(1); } },
     // visibility, held in km or miles (see clean) and capped at VIS_CAP, which shows as "20+" / "12+"
     dist:   { cls: 'mm',  sign: '',  scale: 0.6214,   agg: 'min',  unit: function (imp) { return imp ? 'mi' : 'km'; },
-              fmt: function (v, imp) { return v >= visCap(imp) - 1e-9 ? (imp ? '12+' : '20+') : v < 9.95 ? v.toFixed(1) : String(Math.max(10, Math.floor(v))); } },   // floor, so 19.6 never reads as the cap; 9.95-9.99 rounds to 10 as toFixed would
+              fmt: function (v, imp) { return v >= visCap(imp) - 1e-9 ? (imp ? '12+' : '20+') : v < 0.05 ? '<0.1' : v < 9.95 ? v.toFixed(1) : String(Math.max(10, Math.floor(v))); } },   // "<0.1", not "0.0" (fog under 50 m is not zero); floor, so 19.6 never reads as the cap; 9.95-9.99 rounds to 10 as toFixed would
     dir:    { cls: 'dir', circular: true, agg: 'dir', unit: function () { return 'from'; } },
     code:   { cls: 'code', categorical: true, agg: 'mode', unit: function () { return ''; } }
   };
@@ -972,7 +972,7 @@
     }
     // one contributing model: show its value alone rather than a fake min/mean/max spread
     if (d.n === 1) {
-      return '<td class="' + cls + ' single"' + title + attrs + '><span class="mean ' + band(col, d.meanRaw, hourly) + '">' + d.mean + (kind.sign || '') + '</span></td>';
+      return '<td class="' + cls + ' single"' + title + attrs + '><span class="mean ' + band(col, d.meanRaw, hourly) + '">' + esc(d.mean) + (kind.sign || '') + '</span></td>';
     }
     var drift = '';
     if (!hourly && col.drift) {
@@ -981,9 +981,9 @@
         (dr && dr.dir ? (dr.dir === 'up' ? '▲' : '▼') : '') + '</span>';
     }
     return '<td class="' + cls + '"' + title + attrs + '>' +
-      '<span class="lo">' + d.lo + '</span>' +
-      '<span class="mean ' + (d.meanRaw != null ? band(col, d.meanRaw, hourly) : '') + '">' + d.mean + (kind.sign || '') + '</span>' +
-      '<span class="hi">' + d.hi + '</span>' + drift + '</td>';
+      '<span class="lo">' + esc(d.lo) + '</span>' +
+      '<span class="mean ' + (d.meanRaw != null ? band(col, d.meanRaw, hourly) : '') + '">' + esc(d.mean) + (kind.sign || '') + '</span>' +
+      '<span class="hi">' + esc(d.hi) + '</span>' + drift + '</td>';
   }
 
   /* ---------------- render: table ---------------- */
