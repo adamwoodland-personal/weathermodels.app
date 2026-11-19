@@ -66,6 +66,10 @@
    * desc   -> the header tooltip and the Columns panel text.
    */
   function round(v) { return String(Math.round(v)); }
+  // Models stop counting visibility at different distances (GFS 24.1 km, UKMO and ICON about 26-39, CMA 30),
+  // so everything from 20 km (12.4 miles) up is one "clear" value and the spread compares real differences.
+  var VIS_CAP = 20;
+  function visCap(imp) { return imp ? VIS_CAP * 0.6214 : VIS_CAP; }
 
   var KINDS = {
     temp:   { cls: 'deg', sign: '°', scale: 1.8,      agg: 'mean', unit: function (imp) { return imp ? '°F' : '°C'; }, fmt: round },
@@ -79,6 +83,9 @@
     sunH:   { cls: 'sun', sign: '',  scale: 1,        agg: 'sum',  unit: function () { return 'h'; }, fmt: function (v) { return (v / 3600).toFixed(1); } },
     sunMin: { cls: 'sun', sign: '',  scale: 1,        agg: 'sum',  unit: function () { return 'min'; }, fmt: function (v) { return round(v / 60); } },
     uv:     { cls: 'pct', sign: '',  scale: 1,        agg: 'mean', unit: function () { return 'index'; }, fmt: function (v) { return v.toFixed(1); } },
+    // visibility, held in km or miles (see clean) and capped at VIS_CAP, which shows as "20+" / "12+"
+    dist:   { cls: 'mm',  sign: '',  scale: 0.6214,   agg: 'min',  unit: function (imp) { return imp ? 'mi' : 'km'; },
+              fmt: function (v, imp) { return v >= visCap(imp) - 1e-9 ? (imp ? '12+' : '20+') : v < 9.95 ? v.toFixed(1) : String(Math.floor(v)); } },   // floor, so 19.6 never reads as the cap
     dir:    { cls: 'dir', circular: true, agg: 'dir', unit: function () { return 'from'; } },
     code:   { cls: 'code', categorical: true, agg: 'mode', unit: function () { return ''; } }
   };
@@ -131,6 +138,9 @@
       desc: 'Mid-level cloud, about 3 to 8 km up: sheets and patches that often dim the sun to a pale disc. Averaged over the day’s hours. The layers overlap as seen from the ground, so the three do not add up to the total Cloud. GEM is left out: its layers do not match its own total.' },
     { key: 'cloudHigh', label: 'High cloud', kind: 'pct',    daily: 'cloud_cover_high_mean', fromHours: true, hourly: 'cloud_cover_high', wide: 40, omit: ['gem_seamless'],
       desc: 'High cloud above about 8 km: thin ice cloud such as cirrus, which the sun often shines through. Averaged over the day’s hours. The layers overlap as seen from the ground, so the three do not add up to the total Cloud. GEM is left out: its layers do not match its own total.' },
+    // Only four models publish visibility, and Open-Meteo has no daily value: the day shows its lowest hour.
+    { key: 'vis',       label: 'Visibility', kind: 'dist',   daily: 'visibility_min_day', fromHours: true, hourly: 'visibility', wide: 10,
+      desc: 'How far you can see: the day shows its lowest hour, the hour rows each hour’s figure. Under 1 km (0.6 miles) is fog. Only GFS, UKMO, CMA GRAPES and, over Europe, ICON publish it. The models stop counting at different distances, so anything from 20 km (12 miles) up shows as 20+ (12+).' },
     { key: 'humidity',  label: 'Humidity',   kind: 'pct',    daily: 'relative_humidity_2m_mean',     hourly: 'relative_humidity_2m',      wide: 25,
       drift: { agg: 'mean', thr: 8, words: ['more humid', 'less humid'] },
       desc: 'Relative humidity at 2 m, averaged over the day. The small arrow shows whether the models’ mean has moved by 8% or more since their run three days ago.' },
@@ -166,7 +176,11 @@
   COLUMNS.forEach(function (c) {
     if (c.kind === 'precip' || c.kind === 'snow') { CLAMP0[c.daily] = true; if (c.hourly) CLAMP0[c.hourly] = true; }
   });
-  function clean(v, name) { return CLAMP0[name] && v < 0 ? 0 : v; }
+  function clean(v, name) {
+    // visibility arrives in metres, or feet when the page asks for imperial units
+    if (name === 'visibility') return Math.min(v / (imperial() ? 5280 : 1000), visCap(imperial()));
+    return CLAMP0[name] && v < 0 ? 0 : v;
+  }
 
   // Day totals are added up from the day's own hours, not taken from Open-Meteo's daily answer.
   // For the 3- and 6-hourly models (ECMWF IFS, AIFS, CMA, JMA) its daily total covers a window that
@@ -179,7 +193,7 @@
   var FROM_HOURS = {};
   COLUMNS.forEach(function (c) {
     if (c.hourly && KINDS[c.kind].agg === 'sum') FROM_HOURS[c.daily] = { from: c.hourly };
-    if (c.fromHours) FROM_HOURS[c.daily] = { from: c.hourly, mean: true };
+    if (c.fromHours) FROM_HOURS[c.daily] = { from: c.hourly, mean: KINDS[c.kind].agg === 'mean', min: KINDS[c.kind].agg === 'min' };
   });
   FROM_HOURS.precipitation_hours = { from: 'precipitation', count: true };
 
@@ -605,11 +619,11 @@
         day.vals[v] = {};
         if (!day.hours.length) return;
         MODELS.forEach(function (m) {
-          var total = 0;
+          var total = f.min ? Infinity : 0;
           for (var i = 0; i < day.hours.length; i++) {
             var x = day.hours[i].vals[f.from][m.id];
             if (x === undefined) return;
-            total += f.count ? (x > 0 ? 1 : 0) : x;
+            total = f.min ? Math.min(total, x) : total + (f.count ? (x > 0 ? 1 : 0) : x);
           }
           if (f.mean) total /= day.hours.length;
           day.vals[v][m.id] = Math.round(total * 1e6) / 1e6;   // drop float noise from the additions
@@ -770,6 +784,7 @@
     var agg = KINDS[kindName].agg;
     if (agg === 'sum') return vals.reduce(function (a, b) { return a + b; }, 0);
     if (agg === 'dir') return circMean(vals);
+    if (agg === 'min') return Math.min.apply(null, vals);
     if (agg === 'mode') return mode(vals).value;
     return vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
   }
