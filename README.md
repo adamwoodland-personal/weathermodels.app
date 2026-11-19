@@ -21,9 +21,14 @@ agree and where they don't. Free, no account, no adverts, nothing tracked.
   (the most common WMO weather code, with how many models agree).
 - **Trend arrows** on most number columns (High, Low, Feels high/low, Rain, Snow, Wind, Wind avg,
   Gusts, Cloud, Humidity, Dew point, Pressure, Sunshine): whether the models' mean has moved by a
-  meaningful amount (1°, 1 mm, 5 km/h, 15% cloud…) since their run three days ago, from Open-Meteo's
-  previous-runs archive. Only the columns on show are fetched; switching one on fetches its history.
-  Chance, UV, visibility and the cloud layers have none: the archive does not keep them.
+  meaningful amount (1°, 1 mm, 5 km/h, 15% cloud…) since their forecast made three days ahead (or two,
+  or one), from Open-Meteo's previous-runs archive. Only the columns on show are fetched; switching
+  one on fetches its history.
+  Chance, UV, visibility and the cloud layers have none: the archive does not keep them. A model
+  counts towards a day's arrow only when both runs have all 24 of its hours and its earlier series is
+  not just a copy of its latest run (Open-Meteo fills the hours more than N days after the latest run
+  with that run, found by where pressure and humidity start matching it), so only the next few days
+  have an arrow.
 - **Hover or tap any cell** for every model's value, lowest to highest. Click a column header for
   what it means.
 - Place search (Photon / OpenStreetMap, with Open-Meteo's geocoder as fallback), an opt-in
@@ -38,7 +43,10 @@ agree and where they don't. Free, no account, no adverts, nothing tracked.
 - The accuracy page scores the nine models for a place entirely in the browser: two more
   keyless Open-Meteo requests, the previous-runs API (each model's forecast made 1–7 days
   ahead) and the archive API pinned to ERA5 reanalysis (what actually happened). ERA5 lags
-  about five days, so the scored period ends roughly a week ago.
+  about five days, so the scored period ends roughly a week ago. "Days ahead" is per hour (each
+  hour comes from the run made that long before it), "wet" means 1 mm or more of precipitation
+  (snow counted as melted water), and a day is scored only when every hour of it is there on both
+  sides. Both requests have a time limit and are asked again if they stall.
 - Three keyless, CORS-enabled Open-Meteo requests per place: daily variables (the table renders
   from this first), hourly variables (fills the expandable rows and the day totals), and the
   previous-runs API (trend arrows). All models come back in one response each.
@@ -53,6 +61,9 @@ agree and where they don't. Free, no account, no adverts, nothing tracked.
 - Place, units, step, model toggles and column layout are kept in `localStorage` and mirrored
   into the URL (`?at=lat,lon&n=…&cols=…&off=…&units=…&step=…&avg=…`), so a link reproduces a view
   exactly, including which models were switched off. `tmp=1` shows a place without remembering it.
+- Times are Open-Meteo's: every hour at one fixed UTC offset, the place's offset now, for the whole
+  forecast. After a clock change inside the forecast the hours (and day edges) are an hour off local
+  time; the place line says so when that happens, and the About section explains it.
 - An open tab re-fetches after an hour, or on return after 30 minutes away, and moves the
   current-hour highlight and sky theme each hour; the place line shows when the data arrived.
 

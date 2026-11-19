@@ -3,7 +3,7 @@
  * Three keyless, CORS-enabled Open-Meteo requests per place:
  *   1. daily variables for every model  -> the table renders from this alone (fast first paint)
  *   2. hourly variables for every model -> fills the expandable hour rows (+ is_day for night shading)
- *   3. previous-runs API                 -> what each model said 1, 2 and 3 days ago, for the drift arrows
+ *   3. previous-runs API                 -> what each model forecast 1, 2 and 3 days ahead, for the drift arrows
  *                                           (only for the arrow columns on show; more are fetched when a
  *                                           column is switched on)
  * Each cell shows min / mean / max across whichever models are switched on (circular mean for wind
@@ -24,8 +24,11 @@
   var DAYS = 10;
   var API = 'https://api.open-meteo.com/v1/forecast';
   var PREV_API = 'https://previous-runs-api.open-meteo.com/v1/forecast';
-  var LAGS = [1, 2, 3];          // days ago, for the drift comparison
-  var MIN_HOURS = 20;            // hours a previous run must cover before its day value counts
+  var LAGS = [1, 2, 3];          // days ahead (Open-Meteo's previous_dayN leads), for the drift comparison
+  // a local day's 24 timestamps: Open-Meteo answers at one fixed UTC offset, so every day runs
+  // 'T00:00'...'T23:00', even across a clock change and at half-hour offsets (checked 2026-11-19)
+  var DAY_HOURS = [];
+  for (var hh = 0; hh < 24; hh++) DAY_HOURS.push('T' + (hh < 10 ? '0' : '') + hh + ':00');
 
   var MODELS = [
     { id: 'ecmwf_ifs025',         name: 'ECMWF IFS',   org: 'Europe',
@@ -93,40 +96,40 @@
   var COLUMNS = [
     { key: 'high',      label: 'High',       kind: 'temp',   daily: 'temperature_2m_max',            hourly: 'temperature_2m',            wide: 4,
       drift: { agg: 'max', thr: 1 },
-      desc: 'Highest air temperature of the day, 2 m above ground. Hour rows show the temperature for that hour. The small arrow shows whether the models’ mean has moved by 1° or more since their run three days ago.' },
+      desc: 'Highest air temperature of the day, 2 m above ground. Hour rows show the temperature for that hour. The small arrow shows whether the models’ mean has moved by 1° or more since their forecast made three days ahead (or two, or one); only the next few days have one.' },
     { key: 'low',       label: 'Low',        kind: 'temp',   daily: 'temperature_2m_min',            hourly: 'temperature_2m',            wide: 4,
       drift: { agg: 'min', thr: 1 },
-      desc: 'Lowest air temperature of the day, 2 m above ground. Hour rows show the temperature for that hour. The small arrow shows whether the models’ mean has moved by 1° or more since their run three days ago.' },
+      desc: 'Lowest air temperature of the day, 2 m above ground. Hour rows show the temperature for that hour. The small arrow shows whether the models’ mean has moved by 1° or more since their forecast made three days ahead (or two, or one); only the next few days have one.' },
     { key: 'feelsHigh', label: 'Feels high', kind: 'temp',   daily: 'apparent_temperature_max',      hourly: 'apparent_temperature',      wide: 4,
       drift: { agg: 'max', thr: 1 },
-      desc: 'Highest "feels like" temperature: air temperature adjusted for humidity, wind and sunshine. The small arrow shows whether the models’ mean has moved by 1° or more since their run three days ago.' },
+      desc: 'Highest "feels like" temperature: air temperature adjusted for humidity, wind and sunshine. The small arrow shows whether the models’ mean has moved by 1° or more since their forecast made three days ahead (or two, or one); only the next few days have one.' },
     { key: 'feelsLow',  label: 'Feels low',  kind: 'temp',   daily: 'apparent_temperature_min',      hourly: 'apparent_temperature',      wide: 4,
       drift: { agg: 'min', thr: 1 },
-      desc: 'Lowest "feels like" temperature: air temperature adjusted for humidity, wind and sunshine. The small arrow shows whether the models’ mean has moved by 1° or more since their run three days ago.' },
+      desc: 'Lowest "feels like" temperature: air temperature adjusted for humidity, wind and sunshine. The small arrow shows whether the models’ mean has moved by 1° or more since their forecast made three days ahead (or two, or one); only the next few days have one.' },
     { key: 'rain',      label: 'Rain',       kind: 'precip', daily: 'precipitation_sum',             hourly: 'precipitation',             wide: 5, hwide: 2,
       drift: { agg: 'sum', thr: 1, words: ['wetter', 'drier'] },
-      desc: 'Total precipitation for the day: rain, showers and melted snow. Hour rows show the amount falling in that hour. The small arrow shows whether the models’ mean has moved by 1 mm or more since their run three days ago.' },
+      desc: 'Total precipitation for the day: rain, showers and melted snow. Hour rows show the amount falling in that hour. The small arrow shows whether the models’ mean has moved by 1 mm or more since their forecast made three days ahead (or two, or one); only the next few days have one.' },
     { key: 'pop',       label: 'Chance',     kind: 'pct',    daily: 'precipitation_probability_max', hourly: 'precipitation_probability', wide: 40,
       desc: 'Chance of at least 0.1 mm of precipitation in an hour, from each model’s ensemble spread. The day value is the wettest hour’s chance. Only ECMWF IFS, GFS, ICON, UKMO and GEM publish it.' },
     { key: 'wetHours',  label: 'Wet hours',  kind: 'hours',  daily: 'precipitation_hours',           hourly: null,                        wide: 4,
       desc: 'Number of hours in the day with measurable precipitation. Day rows only.' },
     { key: 'snow',      label: 'Snow',       kind: 'snow',   daily: 'snowfall_sum',                  hourly: 'snowfall',                  wide: 3, hwide: 1,
       drift: { agg: 'sum', thr: 1, words: ['more snow', 'less snow'] },
-      desc: 'Snowfall depth for the day, about 7× the water equivalent. The small arrow shows whether the models’ mean has moved by 1 cm or more since their run three days ago.' },
+      desc: 'Snowfall depth for the day, about 7× the water equivalent. The small arrow shows whether the models’ mean has moved by 1 cm or more since their forecast made three days ahead (or two, or one); only the next few days have one.' },
     { key: 'wind',      label: 'Wind',       kind: 'speed',  daily: 'wind_speed_10m_max',            hourly: 'wind_speed_10m',            wide: 15,
       drift: { agg: 'max', thr: 5, words: ['windier', 'calmer'] },
-      desc: 'Highest sustained wind speed of the day at 10 m (10-minute average, not gusts). The small arrow shows whether the models’ mean has moved by 5 km/h or more since their run three days ago.' },
+      desc: 'Highest sustained wind speed of the day at 10 m (10-minute average, not gusts). The small arrow shows whether the models’ mean has moved by 5 km/h or more since their forecast made three days ahead (or two, or one); only the next few days have one.' },
     { key: 'windMean',  label: 'Wind avg',   kind: 'speed',  daily: 'wind_speed_10m_mean',           hourly: 'wind_speed_10m',            wide: 15,
       drift: { agg: 'mean', thr: 4, words: ['windier', 'calmer'] },
-      desc: 'Average sustained wind speed over the day at 10 m. The small arrow shows whether the models’ mean has moved by 4 km/h or more since their run three days ago.' },
+      desc: 'Average sustained wind speed over the day at 10 m. The small arrow shows whether the models’ mean has moved by 4 km/h or more since their forecast made three days ahead (or two, or one); only the next few days have one.' },
     { key: 'gust',      label: 'Gusts',      kind: 'speed',  daily: 'wind_gusts_10m_max',            hourly: 'wind_gusts_10m',            wide: 20,
       drift: { agg: 'max', thr: 8, words: ['stronger gusts', 'weaker gusts'] },
-      desc: 'Strongest gust of the day at 10 m. Not published by ECMWF AIFS or JMA. The small arrow shows whether the models’ mean has moved by 8 km/h or more since their run three days ago.' },
+      desc: 'Strongest gust of the day at 10 m. Not published by ECMWF AIFS or JMA. The small arrow shows whether the models’ mean has moved by 8 km/h or more since their forecast made three days ahead (or two, or one); only the next few days have one.' },
     { key: 'windDir',   label: 'Wind dir',   kind: 'dir',    daily: 'wind_direction_10m_dominant',   hourly: 'wind_direction_10m',        wide: 90,
       desc: 'Where the wind comes from. The arrow flies with the wind (a north wind points down the page); the outer letters are the most anticlockwise and clockwise models, and the tooltip lists each one. Purple when they span 90° or more.' },
     { key: 'cloud',     label: 'Cloud',      kind: 'pct',    daily: 'cloud_cover_mean',              hourly: 'cloud_cover',               wide: 40,
       drift: { agg: 'mean', thr: 15, words: ['cloudier', 'clearer'] },
-      desc: 'Total cloud cover as a share of the sky, averaged over the day. The small arrow shows whether the models’ mean has moved by 15% or more since their run three days ago.' },
+      desc: 'Total cloud cover as a share of the sky, averaged over the day. The small arrow shows whether the models’ mean has moved by 15% or more since their forecast made three days ahead (or two, or one); only the next few days have one.' },
     // The three layers: Open-Meteo has no daily value for them, so the day is the mean of its own hours
     // (fromHours), and its archive of earlier runs keeps none, so no trend arrow. GEM is left out: its
     // high cloud stays near 0 where the others reach 86-100%, and its low cloud can read 57% beside a
@@ -143,16 +146,16 @@
       desc: 'How far you can see: the day shows its lowest hour, the hour rows each hour’s figure. Under 1 km (0.6 miles) is fog. Only GFS, UKMO, CMA GRAPES and, over Europe, ICON publish it. The models stop counting at different distances, so anything from 20 km (12 miles) up shows as 20+ (12+).' },
     { key: 'humidity',  label: 'Humidity',   kind: 'pct',    daily: 'relative_humidity_2m_mean',     hourly: 'relative_humidity_2m',      wide: 25,
       drift: { agg: 'mean', thr: 8, words: ['more humid', 'less humid'] },
-      desc: 'Relative humidity at 2 m, averaged over the day. The small arrow shows whether the models’ mean has moved by 8% or more since their run three days ago.' },
+      desc: 'Relative humidity at 2 m, averaged over the day. The small arrow shows whether the models’ mean has moved by 8% or more since their forecast made three days ahead (or two, or one); only the next few days have one.' },
     { key: 'dew',       label: 'Dew point',  kind: 'temp',   daily: 'dew_point_2m_mean',             hourly: 'dew_point_2m',              wide: 4,
       drift: { agg: 'mean', thr: 1, words: ['higher', 'lower'] },
-      desc: 'Dew point at 2 m, averaged over the day. Above about 18 °C (64 °F) feels muggy. The small arrow shows whether the models’ mean has moved by 1° or more since their run three days ago.' },
+      desc: 'Dew point at 2 m, averaged over the day. Above about 18 °C (64 °F) feels muggy. The small arrow shows whether the models’ mean has moved by 1° or more since their forecast made three days ahead (or two, or one); only the next few days have one.' },
     { key: 'pressure',  label: 'Pressure',   kind: 'hpa',    daily: 'pressure_msl_mean',             hourly: 'pressure_msl',              wide: 6,
       drift: { agg: 'mean', thr: 3, words: ['higher', 'lower'] },
-      desc: 'Atmospheric pressure reduced to sea level, averaged over the day. The small arrow shows whether the models’ mean has moved by 3 hPa or more since their run three days ago.' },
+      desc: 'Atmospheric pressure reduced to sea level, averaged over the day. The small arrow shows whether the models’ mean has moved by 3 hPa or more since their forecast made three days ahead (or two, or one); only the next few days have one.' },
     { key: 'sun',       label: 'Sunshine',   kind: 'sunH',   hkind: 'sunMin', daily: 'sunshine_duration', hourly: 'sunshine_duration',   wide: 10800, hwide: 1800,
       drift: { agg: 'sum', thr: 3600, words: ['more sunshine', 'less sunshine'] },
-      desc: 'Hours of direct sunshine in the day (minutes in the hour rows). Not published by JMA. The small arrow shows whether the models’ mean has moved by 1 hour or more since their run three days ago.' },
+      desc: 'Hours of direct sunshine in the day (minutes in the hour rows). Not published by JMA. The small arrow shows whether the models’ mean has moved by 1 hour or more since their forecast made three days ahead (or two, or one); only the next few days have one.' },
     { key: 'uv',        label: 'UV',         kind: 'uv',     daily: 'uv_index_max',                  hourly: 'uv_index',                  wide: 3,
       desc: 'Peak clear-sky UV index. GFS is the only model that publishes it, so the cell shows that single value instead of a min–mean–max spread.' },
     { key: 'sky',       label: 'Sky',        kind: 'code',   daily: 'weather_code',                  hourly: 'weather_code',
@@ -475,7 +478,7 @@
 
   function fetchPrev(place, hourlyVars) {
     var vars = [];
-    hourlyVars.forEach(function (v) {
+    uniq(hourlyVars.concat(RUN_ID_VARS)).forEach(function (v) {   // RUN_ID_VARS: see sameRunFrom
       vars.push(v);
       LAGS.forEach(function (l) { vars.push(v + '_previous_day' + l); });
     });
@@ -587,7 +590,7 @@
     MODELS.forEach(function (m) {
       horizon[m.id] = days.filter(function (day) { return m.id in day.vals.temperature_2m_max; }).length;
     });
-    return { tz: j.timezone, tzAbbr: j.timezone_abbreviation, elevation: j.elevation, days: days, horizon: horizon };
+    return { tz: j.timezone, tzAbbr: j.timezone_abbreviation, offset: j.utc_offset_seconds, elevation: j.elevation, days: days, horizon: horizon };
   }
 
   function attachHourly(j) {
@@ -639,37 +642,66 @@
     });
   }
 
+  /* Where an earlier-run series is really the latest run. Open-Meteo's `_previous_dayN` is, for each
+   * hour, the latest forecast made at least N days before that hour, so for hours more than N days
+   * after the latest run it simply repeats the latest run (at New York on 2026-11-19 GFS's 3-day-old
+   * values equalled its latest run from 21 Nov 19:00 to the end), and an arrow there compared a run
+   * with itself. Returns the index of the hour from which model m's lag-l series equals its latest
+   * run, in every RUN_ID_VARS variable, every hour to the end of the answer (h.time.length if it never
+   * does). Pressure and humidity rather than the compared variables: in the latest run some variables
+   * come out processed differently from the archived copy of the same run (GFS rain, wind, cloud and
+   * feels-like; ICON and UKMO temperature and dew point), so they never match, while rain, snow and
+   * sunshine match by chance whenever both are zero. Pressure and humidity matched for all nine models
+   * at London and New York, at the same hour give or take two (checked 2026-11-19). Both are asked for
+   * with every earlier-run request (fetchPrev), about 10 KB more. */
+  var RUN_ID_VARS = ['pressure_msl', 'relative_humidity_2m'];
+  function sameRunFrom(h, m, l) {
+    var n = h.time.length, k = n;
+    var now = RUN_ID_VARS.map(function (v) { return h[v + '_' + m]; });
+    var then = RUN_ID_VARS.map(function (v) { return h[v + '_previous_day' + l + '_' + m]; });
+    if (now.concat(then).some(function (a) { return !a; })) return n;   // cannot tell: treated as an earlier run, as before
+    while (k > 0 && now.every(function (a, x) { return a[k - 1] === then[x][k - 1]; })) k--;
+    return k;
+  }
+
   // fold previous-run hours into per-day values: prev[colKey][lag][modelId], for the columns whose
-  // hourly variable is in `vars` (columns fetched earlier keep theirs)
+  // hourly variable is in `vars` (columns fetched earlier keep theirs). A run gets a day value only
+  // if it has all 24 of the day's hours (each timestamp once, each with a value), so both ends of a
+  // trend cover the same hours. With 20 enough, a run reaching only part of a day was compared with
+  // a full one (on 2026-11-19 UKMO's earlier runs had 00:00-19:00 of 24 Nov at New York, its latest
+  // all 24), so a total, or a high or low falling in the missing hours, could move by those hours
+  // alone. An earlier run (lag 1-3) also needs all 24 hours before the hour where its series turns
+  // into the latest run (sameRunFrom), so a day from then on, or straddling it, gets no value for
+  // that model. A day no lag has two such models for gets no trend (driftFor), and the tooltip says
+  // no earlier run reaches it.
   function attachPrev(j, vars) {
-    var h = j.hourly, idx = {};
-    state.data.days.forEach(function (day, i) { idx[day.date] = i; day.prev = day.prev || {}; });
+    var h = j.hourly, at = {}, from = {};
+    h.time.forEach(function (t, i) { at[t] = Object.prototype.hasOwnProperty.call(at, t) ? null : i; });   // repeated: not trusted
+    LAGS.forEach(function (l) {
+      from[l] = {};
+      MODELS.forEach(function (m) { from[l][m.id] = sameRunFrom(h, m.id, l); });
+    });
+    state.data.days.forEach(function (day) { day.prev = day.prev || {}; });
     COLUMNS.filter(function (c) { return c.drift && vars.indexOf(c.hourly) >= 0; }).forEach(function (c) {
       var lags = [0].concat(LAGS);
       state.data.days.forEach(function (day) {
-        day.prev[c.key] = {};
-        lags.forEach(function (l) { day.prev[c.key][l] = {}; });
-      });
-      lags.forEach(function (l) {
-        MODELS.forEach(function (m) {
-          var arr = h[c.hourly + (l ? '_previous_day' + l : '') + '_' + m.id];
-          if (!arr) return;
-          var acc = {};
-          h.time.forEach(function (t, i) {
-            var v = arr[i];
-            if (v == null) return;
-            v = clean(v, c.hourly);
-            var d = t.slice(0, 10);
-            var a = acc[d] || (acc[d] = { n: 0, sum: 0, min: Infinity, max: -Infinity });
-            a.n++; a.sum += v;
-            if (v < a.min) a.min = v;
-            if (v > a.max) a.max = v;
-          });
-          Object.keys(acc).forEach(function (d) {
-            var a = acc[d];
-            if (a.n < MIN_HOURS || !(d in idx)) return;
-            var g = c.drift.agg, val = g === 'max' ? a.max : g === 'min' ? a.min : g === 'mean' ? a.sum / a.n : a.sum;
-            state.data.days[idx[d]].prev[c.key][l][m.id] = val;
+        var p = day.prev[c.key] = {};
+        lags.forEach(function (l) {
+          p[l] = {};
+          MODELS.forEach(function (m) {
+            var arr = h[c.hourly + (l ? '_previous_day' + l : '') + '_' + m.id];
+            if (!arr) return;
+            var sum = 0, min = Infinity, max = -Infinity, cut = l ? from[l][m.id] : Infinity;
+            for (var k = 0; k < DAY_HOURS.length; k++) {
+              var i = at[day.date + DAY_HOURS[k]], v = i == null || i >= cut ? null : arr[i];
+              if (v == null) return;   // a missing hour, or one the latest run supplies: no value for this run on this day
+              v = clean(v, c.hourly);
+              sum += v;
+              if (v < min) min = v;
+              if (v > max) max = v;
+            }
+            var g = c.drift.agg;
+            p[l][m.id] = g === 'max' ? max : g === 'min' ? min : g === 'mean' ? sum / DAY_HOURS.length : sum;
           });
         });
       });
@@ -852,6 +884,40 @@
     }
   }
 
+  // seconds east of UTC in force in zone tz at instant ms, or null if the browser cannot say
+  function zoneOffset(tz, ms) {
+    try {
+      var p = {};
+      new Intl.DateTimeFormat('en-GB', {
+        timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
+      }).formatToParts(new Date(ms)).forEach(function (x) { p[x.type] = x.value; });
+      return Math.round((Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - ms) / 1000);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /* Open-Meteo gives every time at one fixed UTC offset, the place's offset now (data.offset), and
+   * keeps it across a clock change: every day is 00:00-23:00 on that clock (checked 2026-11-19 - London's
+   * 15 Oct sunrise came back as 06:24, the GMT time, not 07:24 BST). So when the clocks change inside the
+   * forecast, the hour labels and day edges after it are an hour off local time. Returns the first day
+   * whose local offset differs (at its noon), or null. */
+  function clockChange() {
+    var d = state.data;
+    if (!d || d.offset == null || !d.tz) return null;
+    for (var i = 0; i < d.days.length; i++) {
+      var date = d.days[i].date;
+      var off = zoneOffset(d.tz, Date.UTC(+date.slice(0, 4), +date.slice(5, 7) - 1, +date.slice(8, 10), 12) - d.offset * 1000);
+      if (off != null && off !== d.offset) return { date: date, hours: (off - d.offset) / 3600 };
+    }
+    return null;
+  }
+
+  function utcText(sec) {
+    var a = Math.abs(sec), m = Math.round(a / 60) % 60;
+    return 'UTC' + (sec < 0 ? '−' : '+') + Math.floor(a / 3600) + (m ? ':' + (m < 10 ? '0' : '') + m : '');
+  }
+
   var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -931,7 +997,7 @@
   function driftText(col, dr) {
     var kind = KINDS[col.kind], imp = imperial();
     if (!dr) return state.prevReady ? 'No earlier run reaches this day yet.' : '';
-    var what = dr.lag + ' day' + (dr.lag > 1 ? 's' : '') + ' ago';
+    var what = dr.lag + ' day' + (dr.lag > 1 ? 's' : '') + ' ahead';   // a lead: made that long before the day, not that long ago
     var who = ' (' + state.avg + ' of ' + dr.n + ' models).';
     var amt = fine(kind, Math.abs(dr.delta), imp);
     if (parseFloat(amt) === 0) return 'Trend: about the same as the models forecast ' + what + who;
@@ -1381,8 +1447,12 @@
     if (state.place.where) bits.push(state.place.where);
     full.push(state.place.lat.toFixed(4) + ', ' + state.place.lon.toFixed(4));
     if (state.data) {
+      var cc = clockChange(), dl = cc && dayLabel(cc.date);
       bits.push(state.data.tzAbbr);
-      full.push(state.data.tz);
+      if (cc) bits.push('times stay ' + state.data.tzAbbr + ' after the clocks change ' + dl.dow + ' ' + dl.dt);
+      full.push(state.data.tz + ', every time at ' + (state.data.offset != null ? utcText(state.data.offset) : state.data.tzAbbr) +
+        ', the offset in force now (Open-Meteo keeps one offset for the whole forecast, so after a clock change the times are an hour off the local clock' +
+        (cc ? ': from ' + dl.dow + ' ' + dl.dt + ' local time is ' + (cc.hours > 0 ? 'ahead of' : 'behind') + ' them by ' + Math.abs(cc.hours) + ' h' : '') + ')');
       if (state.data.elevation != null) bits.push(Math.round(state.data.elevation) + ' m');
     }
     if (state.fetchedAt) {

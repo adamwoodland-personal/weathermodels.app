@@ -1,10 +1,21 @@
 /* weathermodels.app — /most-accurate-weather-forecast/: which model's forecasts for a place
  * turned out best. Everything runs in the browser, two keyless Open-Meteo requests:
  *   1. previous-runs API -> what each model forecast for every hour of the period, made
- *      N days (1, 2, 3, 5 or 7) ahead
+ *      N days (1, 2, 3, 5 or 7) ahead. The lead is per hour: each hour's value is from the
+ *      run made about N x 24 h before that hour, so one day's hours come from consecutive runs
+ *      (Open-Meteo's design; whole runs would need its Single Runs API).
  *   2. archive API, ERA5 reanalysis -> what actually happened at the same hours
  * Each day is scored on the high and low temperature (from hourly values) and on the
- * wet/dry call (1 mm or more). No server, no stored results.
+ * wet/dry call (1 mm or more of precipitation: rain, plus snow as melted water), and only
+ * when every hour of it has a value on both sides. No server, no stored results.
+ *
+ * Days are Open-Meteo's local days: 24 hours at one fixed UTC offset per answer (the place's
+ * offset now), even across a daylight-saving change, so there are no 23- or 25-hour days
+ * (checked 2026-11-19), and timestamps are always on the hour, even at half-hour offsets. A day
+ * is scored only with all 24 of its expected timestamps ('T00:00'-'T23:00') present once in both
+ * answers, each with a value. Precipitation is each hour's preceding-hour total on both sides, so a
+ * day's total runs from 23:00 the evening before to 23:00 - the same window as Open-Meteo's own
+ * daily sums for the hourly models, and the same for every model and for ERA5.
  *
  * ⚠ The archive is pinned to models=era5_seamless. Its default "best match" fills the last
  *   ~5 days with ECMWF IFS analysis, which would score ECMWF against itself (checked
@@ -33,8 +44,9 @@
   var TRUTH_API = 'https://archive-api.open-meteo.com/v1/archive';
   var TRUTH_MODEL = 'era5_seamless';
   var ERA5_LAG_DAYS = 5;   // ask up to here; days ERA5 has not filled yet are dropped
-  var WET_MM = 1;          // a "wet" day: at least this much rain
-  var MIN_HOURS = 20;      // hourly values needed to call a day's high, low or total
+  var WET_MM = 1;          // a "wet" day: at least this much precipitation (snow as melted water)
+  var DAY_HOURS = [];      // a local day's 24 timestamps, 'T00:00'...'T23:00' (one fixed offset, see above)
+  for (var hh = 0; hh < 24; hh++) DAY_HOURS.push('T' + (hh < 10 ? '0' : '') + hh + ':00');
   var MIN_DAYS = 10;       // scored days a model needs to be ranked
   var LEADS = [1, 2, 3, 5, 7], PERIODS = [30, 90], BY = ['temp', 'hi', 'lo', 'rain'];
 
@@ -42,10 +54,12 @@
 
   function isoDay(ms) { return new Date(ms).toISOString().slice(0, 10); }
   // Requested in UTC dates, but the APIs return the place's local days (timezone=auto), so ask
-  // for a day extra at each end; score() then keeps the last `period` complete local days.
+  // for a day extra at each end; score() then keeps the last `period` complete local days. The
+  // start has two spare days: ERA5 often ends a day before ERA5_LAG_DAYS, and west of Greenwich its
+  // last local day is only partly filled and so not scored (one spare left 89 of 90 days at Halifax).
   function windowFor(period, nowMs) {
     var end = nowMs - ERA5_LAG_DAYS * 864e5;
-    return { start: isoDay(end - period * 864e5), end: isoDay(end + 864e5), period: period };
+    return { start: isoDay(end - (period + 1) * 864e5), end: isoDay(end + 864e5), period: period };
   }
   function common(u, place, win, imperial) {
     u.searchParams.set('latitude', place.lat);
@@ -76,10 +90,14 @@
     for (var i = 0; i < a.length; i++) if (a[i] != null) { s += a[i]; n++; }
     return n ? s / n : null;
   }
+  // A day's high, low or total over its 24 slots (indices into arr, one per DAY_HOURS timestamp),
+  // or null unless every slot is there and has a value. A partly filled day - the last ERA5 day
+  // west of Greenwich (20 of 24 hours at Halifax, 21 at Buenos Aires on 2026-11-19), or a forecast
+  // with a gap or a missing timestamp - would understate the total, could miss the high or low, and
+  // would compare a forecast and ERA5 over different hours.
   function agg(arr, idx, kind) {
     var v = [];
-    for (var i = 0; i < idx.length; i++) { var j = idx[i]; if (j != null && arr[j] != null) v.push(arr[j]); }
-    if (v.length < MIN_HOURS) return null;
+    for (var i = 0; i < idx.length; i++) { var j = idx[i]; if (j == null || arr[j] == null) return null; v.push(arr[j]); }
     if (kind === 'max') return Math.max.apply(null, v);
     if (kind === 'min') return Math.min.apply(null, v);
     return v.reduce(function (s, x) { return s + x; }, 0);
@@ -87,22 +105,26 @@
 
   // prev / truth: the two JSON responses. Returns per-model daily errors (aligned to `days`).
   // period: keep only the last `period` complete local days (see windowFor).
+  // timestamp -> index in one answer; a timestamp given twice maps to null, so its slot counts as missing
+  function slotIndex(times) {
+    var at = {};
+    times.forEach(function (t, i) { at[t] = Object.prototype.hasOwnProperty.call(at, t) ? null : i; });
+    return at;
+  }
   function score(prev, truth, lead, period) {
-    var th = truth.hourly, ph = prev.hourly, at = {};
-    ph.time.forEach(function (t, i) { at[t] = i; });
-    var byDay = {}, order = [];
-    th.time.forEach(function (t, i) {
-      var d = t.slice(0, 10);
-      if (!byDay[d]) { byDay[d] = []; order.push(d); }
-      byDay[d].push(i);
-    });
+    var th = truth.hourly, ph = prev.hourly, tAt = slotIndex(th.time), pAt = slotIndex(ph.time);
+    var seen = {}, order = [];
+    th.time.forEach(function (t) { var d = t.slice(0, 10); if (!seen[d]) { seen[d] = true; order.push(d); } });
     var days = [];
     order.forEach(function (d) {
-      var idx = byDay[d], hi = agg(th.temperature_2m, idx, 'max');
-      if (hi == null) return;   // ERA5 has not covered this day yet
+      // the day's 24 expected timestamps, looked up in each answer: forecast and ERA5 are compared at
+      // the same instants, and a timestamp missing from either answer leaves its slot empty
+      var slots = DAY_HOURS.map(function (h) { return d + h; });
+      var idx = slots.map(function (t) { return tAt[t]; }), hi = agg(th.temperature_2m, idx, 'max');
+      if (hi == null) return;   // ERA5 has not covered all of this day yet
       var rain = agg(th.precipitation, idx, 'sum');
       days.push({ day: d, hi: hi, lo: agg(th.temperature_2m, idx, 'min'), wet: rain == null ? null : rain >= WET_MM,
-        p: idx.map(function (i) { return at[th.time[i]]; }) });
+        p: slots.map(function (t) { return pAt[t]; }) });
     });
     if (period && days.length > period) days = days.slice(days.length - period);
     var models = MODELS.map(function (m) {
@@ -188,7 +210,8 @@
       row.stats = i > 0 ? compare(masked(row.m.errs[by], F.mask), masked(top.m.errs[by], F.mask)) : null;
       row.tie = !!(row.stats && row.stats.tie);
     });
-    return { rows: rows, left: F.out, days: F.n, total: F.total };
+    var O = F === R ? T : R;   // the other columns' days, shown under the table when they differ
+    return { rows: rows, left: F.out, days: F.n, total: F.total, other: O.inn.length ? O.n : 0 };
   }
 
   // The "too close to call" popup text: first line is the heading, then one paragraph per line.
@@ -236,7 +259,7 @@
       '<th scope="col" class="' + cls('hi') + '">Highs<span class="u">avg error</span></th>' +
       '<th scope="col" class="' + cls('lo') + '">Lows<span class="u">avg error</span></th>' +
       '<th scope="col">Tends to run</th>' +
-      '<th scope="col" class="' + cls('rain') + '">Rain<span class="u">wet/dry right</span></th></tr></thead><tbody>';
+      '<th scope="col" class="' + cls('rain') + '" title="Wet: 1 mm or more of precipitation in the day - rain, plus any snow counted as melted water">Rain<span class="u">wet/dry right</span></th></tr></thead><tbody>';
     r.rows.forEach(function (row) {
       var m = row.m, mm = row.mean;
       h += '<tr class="' + (row.pos === 1 ? 'lead' : row.tie ? 'tie' : '') + '">' +
@@ -255,7 +278,8 @@
     });
     h += '</tbody></table>';
     if (r.rows.length) h += '<p class="acc-note">Every model above is scored on the same ' + r.days + ' days' +
-      (r.days < r.total ? ' (of ' + r.total + ' with a record of what happened: the days they all have forecasts for)' : '') + '.</p>';
+      (r.days < r.total ? ' (of ' + r.total + ' with a record of what happened: the days they all have forecasts for)' : '') + '.' +
+      (r.other && r.other !== r.days ? (by === 'rain' ? ' The temperature columns are scored on ' : ' The rain column is scored on ') + r.other + '.' : '') + '</p>';
     if (r.left.length) h += '<p class="acc-note">Not ranked - forecasts missing on too many days here: ' +
       esc(listNames(r.left.map(function (x) { return x.m.name + ' (' + x.n + ' of ' + r.total + ')'; }))) + '.</p>';
     return h;
@@ -283,7 +307,7 @@
     var n = res.days.length;
     if (!n) return '';
     return 'Forecasts made ' + aheadText(res.lead) + ', checked against ERA5 for ' + n + ' days, ' +
-      fmtDay(res.days[0], false) + ' – ' + fmtDay(res.days[n - 1], true) + '; ' + res.wetDays + ' of them wet (1 mm or more).';
+      fmtDay(res.days[0], false) + ' – ' + fmtDay(res.days[n - 1], true) + '; ' + res.wetDays + ' of them wet (1 mm or more of rain or melted snow).';
   }
 
   var core = { MODELS: MODELS, LEADS: LEADS, PERIODS: PERIODS, windowFor: windowFor, prevUrl: prevUrl, truthUrl: truthUrl,
@@ -296,9 +320,21 @@
   var OWN_KEY = 'cw-acc-v1', MAIN_KEY = 'cw-v3';   // MAIN_KEY: the forecast page's saved place, units and colour mode (read only)
   var state = { place: null, places: [], lead: 3, period: 30, by: 'temp', imperial: false, dark: false, enabled: {} };
   var cache = {}, seq = 0, searchSeq = 0, MAX_PLACES = 10;   // MAX_PLACES as in app.js
+  var SLOW_MS = 6000;   // then the status says the scoring request is taking longer than usual
 
   function readJson(k) { try { return JSON.parse(localStorage.getItem(k) || 'null') || {}; } catch (e) { return {}; } }
-  function setStatus(msg, err) { var s = $('#status'); s.textContent = msg || ''; s.classList.toggle('err', !!err); }
+  function setStatus(msg, err, again) {
+    var s = $('#status');
+    s.textContent = msg || '';
+    s.classList.toggle('err', !!err);
+    if (again) {   // as on the forecast page
+      var b = el('button', 'ghost again', 'Try again');
+      b.type = 'button';
+      b.addEventListener('click', again);
+      s.appendChild(document.createTextNode(' '));
+      s.appendChild(b);
+    }
+  }
 
   /* Recent places: the same list as the forecast page's tabs (cw-v3.places), with app.js's rules -
      a picked place is added or touched, up to MAX_PLACES, oldest dropped. Only `places` and `place`
@@ -474,14 +510,48 @@
     $('#caption').textContent = core.captionText(res);
   }
 
-  function getJson(u, what) {
-    return fetch(u.toString()).then(function (r) {
-      if (!r.ok) throw new Error(what + ' answered ' + r.status);
-      return r.json();
-    }).then(function (j) {
-      if (j && j.error) throw new Error(what + ': ' + (j.reason || 'error'));
-      return j;
-    });
+  /* Every request has a deadline. Open-Meteo's servers can stall a new connection - it opens, then
+     nothing comes back until it is reset many seconds later (open-meteo/open-meteo issue 2329,
+     November 2026) - and with no limit the page sat on "Fetching…" for as long as the browser cared
+     to wait. An asking with no complete answer after WAIT_MS is dropped, which lets go of its
+     connection. The two scoring requests (tries = TRIES) are then asked again on a new connection,
+     each time with a longer limit (2 x WAIT_MS, then 3 x) so a slow but working server still gets
+     through; one that fails outright (offline, a 5xx) is asked again after PAUSE_MS, and a refusal
+     (4xx) is not asked again. No early second asking alongside the first, as on the forecast page:
+     the 90-day answers normally take 2-3 s (measured 2026-11-19), so that would often double the
+     work for nothing. Place search and the sky check ask once, with the deadline. */
+  var WAIT_MS = 10000, PAUSE_MS = 1000, TRIES = 3;
+  function getJson(u, what, tries) {
+    var url = u.toString(), n = 0;
+    function attempt() {
+      n++;
+      var ctl = window.AbortController ? new AbortController() : null, late = false;
+      var timer = ctl ? setTimeout(function () { late = true; ctl.abort(); }, WAIT_MS * n) : null;
+      return fetch(url, { cache: 'no-store', signal: ctl ? ctl.signal : undefined }).then(function (r) {
+        if (!r.ok) { var e = new Error(what + ' answered ' + r.status); e.status = r.status; throw e; }
+        return r.json();
+      }).then(function (j) {
+        clearTimeout(timer);
+        if (j && j.error) throw new Error(what + ': ' + (j.reason || 'error'));   // a refusal: not asked again
+        return j;
+      }, function (e) {
+        clearTimeout(timer);
+        if (late) e = new Error(what + ' is not answering');
+        if ((e.status >= 400 && e.status < 500) || n >= (tries || 1)) throw e;
+        return new Promise(function (go) { setTimeout(go, late ? 0 : PAUSE_MS); }).then(attempt);
+      });
+    }
+    return attempt();
+  }
+
+  // Answers in hand, by address. The ERA5 one serves every lead time, and when one of the two
+  // requests fails the other's answer is kept, so Try again (or another choice) asks only for
+  // what is still missing. A forecast answer is let go once its scores are cached.
+  var answers = {};
+  function ask(u, what) {
+    var k = u.toString();
+    if (answers[k]) return Promise.resolve(answers[k]);
+    return getJson(u, what, TRIES).then(function (j) { answers[k] = j; return j; });
   }
 
   function run() {
@@ -493,18 +563,23 @@
     if (cache[key]) { setStatus(''); draw(cache[key]); return; }
     var win = core.windowFor(state.period, Date.now());
     $('#summary').textContent = ''; $('#tableWrap').textContent = ''; $('#caption').textContent = '';
-    setStatus('Fetching ' + state.period + ' days of forecasts and what actually happened…');
+    var fetching = 'Fetching ' + state.period + ' days of forecasts and what actually happened…';
+    setStatus(fetching);
+    setTimeout(function () {   // a stalled request can take a while to be dropped and asked again
+      if (mine === seq && $('#status').textContent === fetching) setStatus(fetching + ' This is taking longer than usual, please wait.');
+    }, SLOW_MS);
+    var pu = core.prevUrl(p, state.lead, win, state.imperial);
     Promise.all([
-      getJson(core.prevUrl(p, state.lead, win, state.imperial), 'Previous runs'),
-      getJson(core.truthUrl(p, win, state.imperial), 'ERA5 archive')
+      ask(pu, "Open-Meteo's previous-runs archive"),
+      ask(core.truthUrl(p, win, state.imperial), "Open-Meteo's ERA5 archive")
     ]).then(function (r) {
       if (mine !== seq) return;
       var res = core.score(r[0], r[1], state.lead, win.period);
       if (!res.days.length) { setStatus('ERA5 has no data for this place and period yet.', true); return; }
-      cache[key] = res; setStatus(''); draw(res);
+      cache[key] = res; delete answers[pu.toString()]; setStatus(''); draw(res);
     }).catch(function (e) {
       if (mine !== seq) return;
-      setStatus('Could not score this place: ' + e.message + '. Try again in a minute.', true);
+      setStatus('Could not score this place: ' + String(e.message).replace(/\.$/, '') + '.', true, run);
     });
   }
 
