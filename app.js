@@ -960,9 +960,11 @@
     if (kind.circular) {
       s = dirStat(per);
       out.lo = compass(s.min); out.hi = compass(s.max);
-      // the arrow flies with the wind (from NE -> pointing south-west); 16 CSS rotation steps, no inline styles
-      out.mean = '<svg class="arrow rot-' + (Math.round(((s.mean + 180) % 360) / 22.5) % 16) + '" aria-hidden="true"><use href="#i-arrow"/></svg>' +
-        '<span class="sr">' + compass(s.mean) + '</span>';
+      // the arrow flies with the wind (from NE -> pointing south-west); 16 CSS rotation steps, no inline styles.
+      // meanHtml is markup the cell inserts as-is; every other value (mean, lo, hi) is plain text and escaped.
+      out.mean = compass(s.mean);
+      out.meanHtml = '<svg class="arrow rot-' + (Math.round(((s.mean + 180) % 360) / 22.5) % 16) + '" aria-hidden="true"><use href="#i-arrow"/></svg>' +
+        '<span class="sr">' + out.mean + '</span>';
       out.wide = col.wide != null && s.spread >= col.wide;
       out.meanDeg = s.mean;
       out.rows = per.slice().sort(function (a, b) {
@@ -1037,8 +1039,9 @@
         '<span class="txt">' + esc(wmo(d.code)) + '</span></span><span class="agree">' + d.agree + '/' + d.n + '</span></td>';
     }
     // one contributing model: show its value alone rather than a fake min/mean/max spread
+    var mean = d.meanHtml != null ? d.meanHtml : esc(d.mean);
     if (d.n === 1) {
-      return '<td class="' + cls + ' single"' + title + attrs + '><span class="mean ' + band(col, d.meanRaw, hourly) + '">' + esc(d.mean) + (kind.sign || '') + '</span></td>';
+      return '<td class="' + cls + ' single"' + title + attrs + '><span class="mean ' + band(col, d.meanRaw, hourly) + '">' + mean + (kind.sign || '') + '</span></td>';
     }
     var drift = '';
     if (!hourly && col.drift) {
@@ -1048,7 +1051,7 @@
     }
     return '<td class="' + cls + '"' + title + attrs + '>' +
       '<span class="lo">' + esc(d.lo) + '</span>' +
-      '<span class="mean ' + (d.meanRaw != null ? band(col, d.meanRaw, hourly) : '') + '">' + esc(d.mean) + (kind.sign || '') + '</span>' +
+      '<span class="mean ' + (d.meanRaw != null ? band(col, d.meanRaw, hourly) : '') + '">' + mean + (kind.sign || '') + '</span>' +
       '<span class="hi">' + esc(d.hi) + '</span>' + drift + '</td>';
   }
 
