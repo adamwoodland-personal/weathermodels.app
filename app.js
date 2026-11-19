@@ -85,7 +85,7 @@
     uv:     { cls: 'pct', sign: '',  scale: 1,        agg: 'mean', unit: function () { return 'index'; }, fmt: function (v) { return v.toFixed(1); } },
     // visibility, held in km or miles (see clean) and capped at VIS_CAP, which shows as "20+" / "12+"
     dist:   { cls: 'mm',  sign: '',  scale: 0.6214,   agg: 'min',  unit: function (imp) { return imp ? 'mi' : 'km'; },
-              fmt: function (v, imp) { return v >= visCap(imp) - 1e-9 ? (imp ? '12+' : '20+') : v < 9.95 ? v.toFixed(1) : String(Math.floor(v)); } },   // floor, so 19.6 never reads as the cap
+              fmt: function (v, imp) { return v >= visCap(imp) - 1e-9 ? (imp ? '12+' : '20+') : v < 9.95 ? v.toFixed(1) : String(Math.max(10, Math.floor(v))); } },   // floor, so 19.6 never reads as the cap; 9.95-9.99 rounds to 10 as toFixed would
     dir:    { cls: 'dir', circular: true, agg: 'dir', unit: function () { return 'from'; } },
     code:   { cls: 'code', categorical: true, agg: 'mode', unit: function () { return ''; } }
   };
