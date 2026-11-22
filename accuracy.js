@@ -323,6 +323,15 @@
   var SLOW_MS = 6000;   // then the status says the scoring request is taking longer than usual
 
   function readJson(k) { try { return JSON.parse(localStorage.getItem(k) || 'null') || {}; } catch (e) { return {}; } }
+  // a link value with up to two extra layers of %-encoding undone (a copy of app.js's param(): Windows 11 Notepad
+  // encodes a pasted link again, "%2C" -> "%252C", and "at" then no longer splits on its comma)
+  function param(q, k) {
+    var v = q.get(k);
+    for (var i = 0; v && i < 2 && /%[0-9A-Fa-f]{2}/.test(v); i++) {
+      try { v = decodeURIComponent(v); } catch (e) { break; }
+    }
+    return v;
+  }
   function setStatus(msg, err, again) {
     var s = $('#status');
     s.textContent = msg || '';
@@ -410,10 +419,10 @@
     if (PERIODS.indexOf(own.period) >= 0) state.period = own.period;
     if (BY.indexOf(own.by) >= 0) state.by = own.by;
     // a shared link wins
-    var at = (q.get('at') || '').split(',');
+    var at = (param(q, 'at') || '').split(',');
     if (at.length === 2 && isFinite(+at[0]) && isFinite(+at[1]) && Math.abs(+at[0]) <= 90 && Math.abs(+at[1]) <= 180) {
       // like the forecast page, a shared link joins the recent places
-      state.place = rememberPlace({ name: q.get('n') || (+at[0]).toFixed(2) + ', ' + (+at[1]).toFixed(2), where: q.get('w') || '', lat: +at[0], lon: +at[1] });
+      state.place = rememberPlace({ name: param(q, 'n') || (+at[0]).toFixed(2) + ', ' + (+at[1]).toFixed(2), where: param(q, 'w') || '', lat: +at[0], lon: +at[1] });
       writeMain();
     }
     if (LEADS.indexOf(+q.get('lead')) >= 0) state.lead = +q.get('lead');

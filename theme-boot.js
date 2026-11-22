@@ -14,7 +14,9 @@
     var root = document.documentElement;
     var main = JSON.parse(localStorage.getItem('cw-v3') || 'null') || {};
     if (main.mode === 'dark') { root.setAttribute('data-mode', 'dark'); return; }
-    var at = (new URLSearchParams(location.search).get('at') || '').split(',');
+    var at = new URLSearchParams(location.search).get('at') || '';
+    for (var i = 0; i < 2 && /%[0-9A-Fa-f]{2}/.test(at); i++) at = decodeURIComponent(at);   // re-encoded links, as app.js's param()
+    at = at.split(',');
     var p = at.length === 2 && isFinite(+at[0]) && isFinite(+at[1]) ? { lat: +at[0], lon: +at[1] } : main.place;
     if (!p || !isFinite(+p.lat) || !isFinite(+p.lon)) {   // no place yet: go by this device's clock
       var lh = new Date().getHours();

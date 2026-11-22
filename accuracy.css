@@ -2,7 +2,8 @@
    neutral daytime look and Dark mode both apply. No inline CSS (strict-CSP fleet). */
 
 .crumb { margin: 0 0 2px; font-size: .85em; color: var(--dim-bg); }
-.crumb a { color: var(--dim-bg); }
+.acc-updated { margin: 4px 0 0; font-size: .8em; color: var(--dim-bg); }   /* the snapshot date (build-snapshot.js) */
+.crumb a { color: var(--dim-bg); display: inline-block; padding: 4px 0; }   /* at least 24 px tall to tap */
 .brand h1 { font-size: 1.45rem; line-height: 1.25; }
 
 .acc-card {
@@ -26,6 +27,7 @@
 .acc-caption, .acc-note { margin: 8px 0 0; color: var(--dim); font-size: .85em; }
 .acc-caption:empty { display: none; }
 .acc-links { margin: 10px 0 0; font-size: .9em; }
+.acc-links a { display: inline-block; padding: 4px 0; }
 
 /* the league table */
 .acc-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -43,7 +45,7 @@ table.acc thead .ranked { color: var(--text); }
 table.acc tr.lead th, table.acc tr.lead td { font-weight: 700; }
 .acc-tie { display: inline-block; margin-top: 3px; padding: 1px 7px; border-radius: 999px; font: inherit; font-size: .74em; font-weight: 600;
   border: 1px solid var(--accent); color: var(--accent); background: transparent; white-space: nowrap; line-height: 1.5; }
-button.acc-tie { cursor: pointer; }
+button.acc-tie { cursor: pointer; padding: 3px 8px; }   /* at least 24 px tall to tap */
 button.acc-tie:hover, button.acc-tie[aria-expanded="true"] { background: var(--accent-soft); }
 button.acc-tie:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .acc-tie-label { font-size: .8em; }

@@ -4,8 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Weather Models — compare nine forecast models in one table</title>
-<meta name="description" content="Compare nine global weather models side by side: the min, mean and max forecast for temperature, rain, wind and more, day by day and hour by hour. Free.">
-<meta name="keywords" content="weather model comparison, compare weather models, ECMWF vs GFS, multi-model forecast, forecast model spread, ECMWF, GFS, ICON, UKMO, ARPEGE, GEM, JMA, Open-Meteo">
+<meta name="description" content="Compare nine weather models side by side, ECMWF, GFS, ICON, UKMO and more: the min, mean and max forecast for temperature, rain and wind, day by day. Free.">
 <link rel="canonical" href="https://weathermodels.app/">
 
 <meta property="og:type"        content="website">
@@ -22,6 +21,7 @@
 <meta name="twitter:title"       content="Weather Models — compare nine forecast models in one table">
 <meta name="twitter:description" content="Every cell shows the min, mean and max across nine global weather models, one row per day. Free, no account, nothing tracked.">
 <meta name="twitter:image"       content="https://weathermodels.app/og-image.png">
+<meta name="twitter:image:alt"   content="Weather Models: a forecast table where each cell shows the minimum, mean and maximum across nine weather models">
 
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -43,6 +43,7 @@
   "applicationCategory": "UtilitiesApplication",
   "operatingSystem": "Any",
   "browserRequirements": "Requires JavaScript",
+  "image": "https://weathermodels.app/og-image.png",
   "inLanguage": "en-GB",
   "isAccessibleForFree": true,
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "GBP" },
@@ -51,35 +52,50 @@
 </script>
 <script type="application/ld+json">
 {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "What do the three numbers in a cell mean?",
-      "acceptedAnswer": { "@type": "Answer", "text": "The lowest, the mean (or the median, switchable in the toolbar) and the highest forecast across the weather models that are switched on. Purple outer numbers mean the models disagree by more than usual for that column. The big number is tinted by its value: blue for cold or wet, orange and red for hot, strong wind or high UV; ordinary values stay plain." }
-    },
-    {
-      "@type": "Question",
-      "name": "Which weather models are compared?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Nine global models, fetched through Open-Meteo: ECMWF IFS, ECMWF AIFS (AI), NOAA GFS, DWD ICON, Met Office UKMO, Météo-France ARPEGE, ECCC GEM, JMA and CMA GRAPES. The seamless variants blend in each agency's regional high-resolution model where one exists, so the same list works anywhere in the world." }
-    },
-    {
-      "@type": "Question",
-      "name": "What do the small arrows mean?",
-      "acceptedAnswer": { "@type": "Answer", "text": "On most number columns an arrow shows that the models' average for that day has moved since their forecast for it made three days ahead (or two, or one), using Open-Meteo's archive of previous runs: by at least 1 degree for temperatures and dew point, 1 mm of rain, 1 cm of snow, 5 km/h of wind (4 for the day's average, 8 for gusts), 15% cloud, 8% humidity, 3 hPa of pressure or an hour of sunshine. Only the next few days have one: further ahead, the archive has nothing older than the latest forecast to compare with. Chance, UV, visibility and the low, mid and high cloud layers have no arrow because the archive does not keep them. Hover or tap the cell for the change." }
-    },
-    {
-      "@type": "Question",
-      "name": "Why can the times be an hour off around a clock change?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Open-Meteo, which supplies the forecasts, gives every time at one fixed offset from UTC: the place's offset now. If the clocks change during the forecast, the times after the change stay on the old clock, an hour off local time, and so do the edges of those days. When that happens, the line under the place name says so. A day's rain adds up the hours stamped 00:00 to 23:00, each of which is the total for the hour before it." }
-    },
-    {
-      "@type": "Question",
-      "name": "Is anything tracked or uploaded?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Nothing is tracked: no cookies, no accounts, no analytics. Two things do leave your browser, both over HTTPS: the coordinates of the place you choose go to Open-Meteo to fetch the forecasts, and the text you type in the search box (or your position, if you press Find me) goes to Photon to look the place up. Your settings are stored in this browser only." }
-    }
-  ]
+ "@context": "https://schema.org",
+ "@type": "FAQPage",
+ "mainEntity": [
+  {
+   "@type": "Question",
+   "name": "What do the three numbers in a cell mean?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "The lowest, the mean (or the median, switchable in the toolbar) and the highest forecast across the weather models that are switched on. Purple outer numbers mean the models disagree by more than usual for that column. The big number is tinted by its value: blue for cold or wet, orange and red for hot, strong wind or high UV; ordinary values stay plain."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "Which weather models are compared?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "Nine global models, fetched through Open-Meteo: ECMWF IFS, ECMWF AIFS (AI), NOAA GFS, DWD ICON, Met Office UKMO, Météo-France ARPEGE, ECCC GEM, JMA and CMA GRAPES. The \"seamless\" variants blend in each agency's regional high-resolution model where one exists, so the same list works anywhere in the world. More about each one: weather models explained."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "What do the small arrows mean?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "On most number columns an arrow shows that the models' average for that day has moved since their forecast for it made three days ahead (or two, or one), using Open-Meteo's archive of previous runs: by at least 1° for temperatures and dew point, 1 mm of rain, 1 cm of snow, 5 km/h of wind (4 for the day's average, 8 for gusts), 15% cloud, 8% humidity, 3 hPa of pressure or an hour of sunshine. Only the next few days have one: further ahead, the archive has nothing older than the latest forecast to compare with. Chance, UV, visibility and the low, mid and high cloud layers have no arrow because the archive does not keep them. Hover or tap the cell for the change."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "Why can the times be an hour off around a clock change?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "Open-Meteo, which supplies the forecasts, gives every time at one fixed offset from UTC: the place's offset now. If the clocks change during the forecast, the times after the change stay on the old clock, an hour off local time, and so do the edges of those days. When that happens, the line under the place name says so. A day's rain adds up the hours stamped 00:00 to 23:00, each of which is the total for the hour before it."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "Is anything tracked or uploaded?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "Nothing is tracked: no cookies, no accounts, no analytics. Two things do leave your browser, both over HTTPS: the coordinates of the place you choose go to Open-Meteo to fetch the forecasts, and the text you type in the search box (or your position, if you press \"Find me\") goes to Photon to look the place up. Your settings are stored in this browser only."
+   }
+  }
+ ]
 }
 </script>
 </head>
@@ -101,7 +117,7 @@
 
 <header class="top">
   <div class="brand">
-    <h1>Weather Models</h1>
+    <h1>Weather Models<span class="h1-tail">: compare nine weather models</span></h1>
     <p class="sub">Nine global models, one row per day: <span class="k lo">min</span> <strong class="k mean">mean</strong> <span class="k hi">max</span>, purple when they <span id="disagree" class="hint" tabindex="0">disagree</span>. Click a day for hours, tap or hover a cell for each model.</p>
   </div>
   <div class="where">
@@ -112,14 +128,14 @@
       <ul id="locResults" class="results" hidden></ul>
     </form>
     <div class="place">
-      <h2 id="placeName">Loading…</h2>
+      <h2 id="placeName">Your forecast</h2>
       <p id="placeMeta" class="meta"></p>
     </div>
   </div>
 </header>
 
 <main id="main" tabindex="-1">
-  <section class="fc-wrap">
+  <section class="fc-wrap loading">
     <table class="fc" id="fcTable">
       <thead>
         <tr>
@@ -159,7 +175,8 @@
     <p class="hint">Untick a model to leave it out of every cell. The number is how many days ahead that model reaches here.
       All "seamless" models blend in that agency's regional high-resolution model where one exists.
       (Australia's BoM ACCESS-G is not listed: Open-Meteo has published no data for it recently.)
-      <a href="/most-accurate-weather-forecast/">Which of them has been most accurate here?</a></p>
+      <a href="/most-accurate-weather-forecast/">Which of them has been most accurate here?</a>
+      <a href="/weather-models-explained/">Who runs each model, and how they differ</a></p>
     <ul id="sourceList" class="chips"></ul>
   </section>
 
@@ -178,7 +195,7 @@
 
   <a class="acc-promo" href="/most-accurate-weather-forecast/">
     <span class="acc-promo-icon" aria-hidden="true">🏆</span>
-    <span class="acc-promo-text"><strong>Which forecast is most accurate where you are?</strong>
+    <span class="acc-promo-text"><strong>Which weather model is most accurate where you are?</strong>
       <span class="acc-promo-sub">See the nine models ranked on how their recent forecasts for this place turned out.</span></span>
   </a>
 
@@ -188,7 +205,7 @@
       <dt>What do the three numbers in a cell mean?</dt>
       <dd>The lowest, the mean (or the median, switchable in the toolbar) and the highest forecast across the weather models that are switched on. Purple outer numbers mean the models disagree by more than usual for that column. The big number is tinted by its value: blue for cold or wet, orange and red for hot, strong wind or high UV; ordinary values stay plain.</dd>
       <dt>Which weather models are compared?</dt>
-      <dd>Nine global models, fetched through Open-Meteo: ECMWF IFS, ECMWF AIFS (AI), NOAA GFS, DWD ICON, Met Office UKMO, Météo-France ARPEGE, ECCC GEM, JMA and CMA GRAPES. The "seamless" variants blend in each agency's regional high-resolution model where one exists, so the same list works anywhere in the world.</dd>
+      <dd>Nine global models, fetched through Open-Meteo: ECMWF IFS, ECMWF AIFS (AI), NOAA GFS, DWD ICON, Met Office UKMO, Météo-France ARPEGE, ECCC GEM, JMA and CMA GRAPES. The "seamless" variants blend in each agency's regional high-resolution model where one exists, so the same list works anywhere in the world. More about each one: <a href="/weather-models-explained/">weather models explained</a>.</dd>
       <dt>What do the small arrows mean?</dt>
       <dd>On most number columns an arrow shows that the models' average for that day has moved since their forecast for it made three days ahead (or two, or one), using Open-Meteo's archive of previous runs: by at least 1° for temperatures and dew point, 1 mm of rain, 1 cm of snow, 5 km/h of wind (4 for the day's average, 8 for gusts), 15% cloud, 8% humidity, 3 hPa of pressure or an hour of sunshine. Only the next few days have one: further ahead, the archive has nothing older than the latest forecast to compare with. Chance, UV, visibility and the low, mid and high cloud layers have no arrow because the archive does not keep them. Hover or tap the cell for the change.</dd>
       <dt>Why can the times be an hour off around a clock change?</dt>

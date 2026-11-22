@@ -213,6 +213,9 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   letter-spacing: -.01em;
 }
 
+/* ": compare nine weather models" after the name: part of the H1 for search, set small so the name leads */
+.brand h1 .h1-tail { font-size: .66em; font-weight: 500; letter-spacing: 0; color: var(--dim-bg); }
+
 .brand .sub { margin: 2px 0 0; color: var(--dim-bg); font-size: .88em; }
 .k { font-variant-numeric: tabular-nums; }
 .k.lo, .k.hi { color: var(--dim-bg); font-size: .85em; opacity: .8; }
@@ -238,6 +241,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .place { min-width: 0; max-width: 20rem; }
 .place h2 { margin: 0; color: var(--text-bg); font-size: 1.05rem; font-weight: 600; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .place .meta { margin: 0; color: var(--dim-bg); font-size: .8em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help; }
+.place .meta:empty::after { content: '\00a0'; }   /* one line kept while it waits for the place, so the page does not move (CLS) */
 
 .loc input {
   flex: 1;
@@ -457,8 +461,11 @@ main:focus { outline: none; }
 
 /* ---------- forecast table ---------- */
 
-/* while the table is empty, keep the space it will take so the toolbar below does not jump */
-.fc-wrap.loading { min-height: 470px; }
+/* while the table is empty, keep the space it will take so nothing below it jumps (CLS). The class is in
+   the HTML, so the space is kept from the first paint. 465 px: the 16-day table (419 px) and the status line
+   under it; the status sits at the foot of the space, where it will be once the rows are in. */
+.fc-wrap.loading { min-height: 465px; display: flex; flex-direction: column; }
+.fc-wrap.loading .status { margin-top: auto; }
 
 .fc-wrap {
   margin-top: 6px;
@@ -698,6 +705,7 @@ main:focus { outline: none; }
 .about dd { margin: 2px 0 0; }
 
 .footer { margin: 14px 0 0; color: var(--dim-bg); font-size: .85em; opacity: .85; }
+.footer a { display: inline-block; padding: 4px 0; }   /* at least 24 px tall to tap */
 
 @media (max-width: 560px) {
   .top { padding-top: 14px; }

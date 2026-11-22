@@ -1,0 +1,15 @@
+/* /weather-models-explained/ — on top of style.css and accuracy.css (their cards, text and table styles).
+   No inline CSS (strict-CSP fleet). */
+
+/* the at-a-glance table: cells wrap (the league table's do not), model names stay on one line */
+table.acc.models th, table.acc.models td { white-space: normal; }
+table.acc.models tbody th { white-space: nowrap; }
+table.acc.models td.reg { min-width: 13em; }
+table.acc.models td:nth-child(2) { min-width: 6.5em; }   /* "about 31 km" on one line */
+table.acc.models td:nth-child(4), table.acc.models td:nth-child(5) { white-space: nowrap; }   /* runs and reach */
+table.acc.models tbody th a { display: inline-block; padding: 4px 0; }   /* at least 24 px tall to tap */
+
+/* the jump links land with the heading a little below the top edge */
+.models-list h3 { scroll-margin-top: 12px; }
+
+.src-list li { margin: 8px 0; }

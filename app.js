@@ -36,7 +36,7 @@
     { id: 'ecmwf_aifs025_single', name: 'ECMWF AIFS',  org: 'Europe, AI',
       full: 'Artificial Intelligence Forecasting System (AIFS Single), 0.25° machine-learning model — European Centre for Medium-Range Weather Forecasts' },
     { id: 'gfs_seamless',         name: 'GFS',         org: 'NOAA, US',
-      full: 'Global Forecast System — NOAA National Weather Service, USA. Seamless: HRRR and NBM blended in over North America' },
+      full: 'Global Forecast System — NOAA National Weather Service, USA. Seamless: HRRR 3 km blended in over the continental US' },
     { id: 'icon_seamless',        name: 'ICON',        org: 'DWD, Germany',
       full: 'Icosahedral Nonhydrostatic model — Deutscher Wetterdienst, Germany. Seamless: ICON-EU and ICON-D2 blended in over Europe and Germany' },
     { id: 'ukmo_seamless',        name: 'UKMO',        org: 'Met Office, UK',
@@ -337,20 +337,32 @@
 
     // a shared link overrides the saved view
     var q = new URLSearchParams(location.search);
-    var at = (q.get('at') || '').split(',');
+    var at = (param(q, 'at') || '').split(',');
     if (at.length === 2 && isFinite(+at[0]) && isFinite(+at[1])) {
-      var linked = { name: q.get('n') || (+at[0]).toFixed(2) + ', ' + (+at[1]).toFixed(2), where: q.get('w') || '', lat: +at[0], lon: +at[1] };
+      var linked = { name: param(q, 'n') || (+at[0]).toFixed(2) + ', ' + (+at[1]).toFixed(2), where: param(q, 'w') || '', lat: +at[0], lon: +at[1] };
       if (q.get('tmp') === '1') { linked.temp = true; state.place = linked; }   // e.g. nearest.land's "Weather here": show, don't remember
       else { state.place = rememberPlace(linked); state.savedPlace = state.place; }
     }
     if (q.get('units') === 'imperial' || q.get('units') === 'metric') state.units = q.get('units');
     if (q.get('step') === '3' || q.get('step') === '1') state.step = +q.get('step');
     if (q.get('avg') === 'median' || q.get('avg') === 'mean') state.avg = q.get('avg');
-    if (q.has('cols')) state.cols = colsFromKeys(q.get('cols') ? q.get('cols').split(',') : []);
+    if (q.has('cols')) state.cols = colsFromKeys(param(q, 'cols') ? param(q, 'cols').split(',') : []);
     if (q.has('off')) {   // models switched off, so a shared link reproduces the sender's numbers
-      var offIds = q.get('off').split(',');
+      var offIds = param(q, 'off').split(',');
       MODELS.forEach(function (m) { state.enabled[m.id] = offIds.indexOf(m.id) < 0; });
     }
+  }
+
+  // A link query value, with up to two extra layers of %-encoding undone. Some apps encode a pasted link again
+  // (Windows 11 Notepad turns "%2C" into "%252C", found 2026-11-22), and then "at" no longer splits on its comma, so
+  // the link opened the visitor's saved place or a guess instead. syncUrl then writes the link back cleanly.
+  // Kept in step with accuracy.js's param() and theme-boot.js.
+  function param(q, k) {
+    var v = q.get(k);
+    for (var i = 0; v && i < 2 && /%[0-9A-Fa-f]{2}/.test(v); i++) {
+      try { v = decodeURIComponent(v); } catch (e) { break; }
+    }
+    return v;
   }
 
   function save() {
@@ -1425,7 +1437,9 @@
   function renderTabs() {
     var nav = $('#tabs');
     nav.textContent = '';
-    nav.hidden = !state.places.length;
+    // Only once there are two places to switch between: a single tab only repeated the heading, and on a
+    // first visit it appeared a second after load and pushed the page down 38 px (layout shift 0.59 of 0.73).
+    nav.hidden = state.places.length < 2;
     state.places.forEach(function (p, i) {
       var tab = el('div', 'tab' + (p === state.place ? ' on' : ''));
       var go = el('button', 'go', p.name || (p.lat.toFixed(2) + ', ' + p.lon.toFixed(2)));

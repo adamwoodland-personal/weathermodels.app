@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weather models explained: ECMWF, GFS, ICON, UKMO and more</title>
+<meta name="description" content="ECMWF, GFS, ICON, UKMO and five more weather models explained: who runs each one, how fine its grid is, how often it runs and how far ahead it reaches.">
+<link rel="canonical" href="https://weathermodels.app/weather-models-explained/">
+
+<meta property="og:type"        content="article">
+<meta property="og:url"         content="https://weathermodels.app/weather-models-explained/">
+<meta property="og:site_name"   content="Weather Models">
+<meta property="og:title"       content="Weather models explained: ECMWF, GFS, ICON, UKMO and more">
+<meta property="og:description" content="The nine global weather models compared on Weather Models: who runs each one, how fine its grid is, how often it runs and how far ahead it reaches.">
+<meta property="og:image"       content="https://weathermodels.app/og-models.png">
+<meta property="og:image:width"  content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt"   content="Weather Models: a table of nine weather models with who runs each one, its grid and how far ahead it forecasts">
+<meta property="og:locale"      content="en_GB">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="Weather models explained: ECMWF, GFS, ICON, UKMO and more">
+<meta name="twitter:description" content="Who runs each of nine global weather models, how fine its grid is, how often it runs and how far ahead it reaches.">
+<meta name="twitter:image"       content="https://weathermodels.app/og-models.png">
+<meta name="twitter:image:alt"   content="Weather Models: a table of nine weather models with who runs each one, its grid and how far ahead it forecasts">
+
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#b7cde2">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/accuracy.css">
+<link rel="stylesheet" href="/models.css">
+<script src="/theme-boot.js"></script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Weather Models", "item": "https://weathermodels.app/" },
+        { "@type": "ListItem", "position": 2, "name": "Weather models explained", "item": "https://weathermodels.app/weather-models-explained/" }
+      ]
+    },
+    {
+      "@type": "Article",
+      "headline": "Weather models explained: ECMWF, GFS, ICON, UKMO and more",
+      "description": "Who runs each of the nine global weather models compared on Weather Models, how fine its grid is, how often it runs and how far ahead it reaches, with the regional models each one blends in.",
+      "url": "https://weathermodels.app/weather-models-explained/",
+      "mainEntityOfPage": "https://weathermodels.app/weather-models-explained/",
+      "image": "https://weathermodels.app/og-models.png",
+      "datePublished": "2026-11-22",
+      "dateModified": "2026-11-22",
+      "author": { "@type": "Person", "name": "Adam Woodland", "url": "https://adamwoodland.com/" },
+      "publisher": { "@type": "Person", "name": "Adam Woodland", "url": "https://adamwoodland.com/" },
+      "isPartOf": { "@type": "WebSite", "name": "Weather Models", "url": "https://weathermodels.app/" },
+      "inLanguage": "en-GB"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@type": "FAQPage",
+ "mainEntity": [
+  {
+   "@type": "Question",
+   "name": "What is the European weather model?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "The Integrated Forecasting System (IFS) of the European Centre for Medium-Range Weather Forecasts (ECMWF), an intergovernmental organisation supported by 35 states. It runs at about 9 km, four times a day, and its 00 and 12 UTC runs reach 15 days ahead. ECMWF also runs the AIFS, a machine-learning model."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "What is the GFS model?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "The Global Forecast System of the US National Oceanic and Atmospheric Administration (NOAA), often called the American model. It runs four times a day at about 13 km and forecasts 16 days ahead, the longest reach of the nine models here."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "What is the HRRR model?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "NOAA's High-Resolution Rapid Refresh, a 3 km model of the continental US that is updated every hour and looks 18 hours ahead, or 48 hours from its 00, 06, 12 and 18 UTC runs. The GFS forecast on this site blends it in over the US. HRRR is to be discontinued at the end of November 2026, with the Rapid Refresh Forecast System (RRFS) as its successor."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "Is the ECMWF model better than GFS?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "In the scores weather centres exchange through the World Meteorological Organization, ECMWF's IFS has led the other global models, NOAA's GFS among them, for upper-air forecasts several days ahead, according to ECMWF's own 2026 evaluation. It does not lead on every measure: for some surface weather, especially in the short range, other centres do better. At a single place the order often changes."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "What is an AI weather model?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "A model that learns how the weather evolves from decades of past weather, instead of working it out from the laws of physics step by step. ECMWF's AIFS, one of the nine here, was trained on ERA5, a reconstruction of past weather, and on ECMWF's analyses of recent years, and it starts each forecast from the IFS's picture of the present. In ECMWF's 2026 evaluation its upper-air forecasts led the IFS's by about a third of a forecast day."
+   }
+  }
+ ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="brand">
+    <p class="crumb"><a href="/">Weather Models</a> <span aria-hidden="true">›</span> Weather models explained</p>
+    <h1>Weather models explained: ECMWF, GFS, ICON, UKMO and more</h1>
+    <p class="sub">The nine global forecast models compared on this site: who runs each one, how fine its grid is, how often it runs and how far ahead it reaches.</p>
+    <p class="acc-updated">Updated 22 November 2026</p>
+  </div>
+</header>
+
+<main id="main" tabindex="-1">
+  <section class="acc-card acc-text" aria-labelledby="whatTitle">
+    <h2 id="whatTitle">What a weather model is</h2>
+    <p>A weather model is a computer program that takes the state of the atmosphere now, pieced together from observations, and steps it forward in time to forecast what comes next. It works on a grid: the finer the grid, the smaller the features it can show, such as a sea breeze, a shower or the effect of a valley. Each national weather service runs its own, with its own grid, its own physics and its own picture of the present, so their forecasts differ, most of all several days ahead.</p>
+    <p>Machine-learning models such as ECMWF's AIFS work differently: instead of working through the physics step by step, they learn from decades of past weather how the atmosphere tends to change.</p>
+    <p class="acc-links"><a href="/">Compare all nine for your place</a></p>
+  </section>
+
+  <section class="acc-card" aria-labelledby="glanceTitle">
+    <h2 id="glanceTitle" class="acc-title">The nine at a glance</h2>
+    <div class="acc-wrap">
+      <table class="acc models">
+        <thead><tr><th scope="col">Model</th><th scope="col">Global grid</th><th scope="col">Regional detail blended in</th><th scope="col">New runs</th><th scope="col">Reaches</th></tr></thead>
+        <tbody>
+          <tr><th scope="row"><a href="#ecmwf-ifs">ECMWF IFS</a><span class="org">ECMWF, Europe</span></th><td>9 km</td><td class="reg">none</td><td>every 6 h</td><td>15 days</td></tr>
+          <tr><th scope="row"><a href="#ecmwf-aifs">ECMWF AIFS</a><span class="org">ECMWF, AI</span></th><td>about 31 km</td><td class="reg">none</td><td>every 6 h</td><td>15 days</td></tr>
+          <tr><th scope="row"><a href="#gfs">GFS</a><span class="org">NOAA, US</span></th><td>13 km</td><td class="reg">HRRR, 3 km: continental US</td><td>every 6 h</td><td>16 days</td></tr>
+          <tr><th scope="row"><a href="#icon">ICON</a><span class="org">DWD, Germany</span></th><td>13 km</td><td class="reg">ICON-EU, 6.5 km: Europe; ICON-D2, 2.2 km: Germany and its neighbours</td><td>every 6 h</td><td>7.5 days</td></tr>
+          <tr><th scope="row"><a href="#ukmo">UKMO</a><span class="org">Met Office, UK</span></th><td>10 km</td><td class="reg">UKV, 1.5 km: UK and Ireland</td><td>every 6 h</td><td>7 days</td></tr>
+          <tr><th scope="row"><a href="#arpege">ARPEGE</a><span class="org">Météo-France</span></th><td>5–24 km, finest over Europe</td><td class="reg">AROME, 1.3 km: mainland France and Corsica</td><td>every 6 h</td><td>4 days</td></tr>
+          <tr><th scope="row"><a href="#gem">GEM</a><span class="org">ECCC, Canada</span></th><td>15 km</td><td class="reg">RDPS, 10 km: Canada and the US; HRDPS, 2.5 km: most of Canada</td><td>every 12 h</td><td>10 days</td></tr>
+          <tr><th scope="row"><a href="#jma">JMA</a><span class="org">Japan</span></th><td>0.125°</td><td class="reg">MSM, 5 km: Japan and its surroundings</td><td>every 6 h</td><td>11 days</td></tr>
+          <tr><th scope="row"><a href="#cma">CMA GRAPES</a><span class="org">China</span></th><td>0.125°</td><td class="reg">none</td><td>every 6 h</td><td>10 days</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="acc-note">Global grid: the model's own, as its operator gives it. This site receives ECMWF IFS on a 0.25° grid (about 25 km) and JMA's model on a 0.5° grid (about 55 km). New runs: the global model's. Reaches: the longest runs, from 00 and 12 UTC; the 06 and 18 UTC runs of IFS, ICON, UKMO, JMA and CMA GRAPES stop sooner. The Sources panel on <a href="/">the forecast table</a> shows how far each model reaches at your place right now.</p>
+  </section>
+
+  <section class="acc-card acc-text models-list" aria-labelledby="nineTitle">
+    <h2 id="nineTitle">The nine models</h2>
+
+    <h3 id="ecmwf-ifs">ECMWF IFS, "the European model"</h3>
+    <p>The Integrated Forecasting System of the European Centre for Medium-Range Weather Forecasts (ECMWF), an independent intergovernmental organisation supported by 35 states and set up in 1975. Its model runs at about 9 km, four times a day (00, 06, 12 and 18 UTC); the 00 and 12 UTC runs reach 15 days ahead, the other two 6 days. ECMWF moved its forecasts to open data on 1 October 2025. This site receives the open 0.25° grid, interpolated from the 9 km model, which is released two hours after ECMWF's real-time forecasts.</p>
+
+    <h3 id="ecmwf-aifs">ECMWF AIFS, the AI model</h3>
+    <p>ECMWF's Artificial Intelligence Forecasting System, a machine-learning model, operational since 25 February 2025; version 2 replaced version 1.1 on 12 May 2026. It was pre-trained on ERA5, a reconstruction of past weather, for the years 1979 to 2022, then fine-tuned on ECMWF's operational analyses for 2018 to 2024; no observations are used to train it. Each forecast starts from the IFS's own picture of the present. It runs four times a day, every run to 15 days ahead in 6-hour steps, on a grid of about 31 km supplied at 0.25°. ECMWF's 2026 evaluation of its forecasts puts the AIFS's lead over the IFS in upper-air forecasts at about a third of a forecast day, similar to the IFS's lead over other centres.</p>
+
+    <h3 id="gfs">GFS, "the American model"</h3>
+    <p>The Global Forecast System of the US National Oceanic and Atmospheric Administration (NOAA), run by its National Centers for Environmental Prediction (NCEP). It runs four times a day, 16 days ahead, at about 13 km with 127 layers in the vertical: hourly for the first five days, then 3-hourly. Over the continental US the seamless version used here blends in NOAA's 3 km HRRR (High-Resolution Rapid Refresh), which is updated every hour and looks 18 hours ahead, or 48 hours from its 00, 06, 12 and 18 UTC runs. HRRR is to be discontinued at the end of November 2026; its successor is the Rapid Refresh Forecast System (RRFS).</p>
+
+    <h3 id="icon">ICON, Germany</h3>
+    <p>The ICOsahedral Nonhydrostatic model of Deutscher Wetterdienst (DWD), Germany's national weather service. Instead of a latitude-longitude grid it covers the globe with triangles, at 13 km in the global model, which has been operational since 25 January 2015. The seamless version blends in ICON-EU over Europe (6.5 km) and ICON-D2 over Germany, Benelux, Switzerland, Austria and parts of their other neighbours (2.2 km), which makes new 48-hour forecasts every 3 hours. The global runs at 00 and 12 UTC reach 7.5 days ahead, those at 06 and 18 UTC 5 days.</p>
+
+    <h3 id="ukmo">UKMO, the Met Office</h3>
+    <p>The Unified Model of the Met Office, the UK's national meteorological service. Its global version has a 10 km grid in the mid-latitudes and runs four times a day; the 00 and 12 UTC runs reach 7 days ahead, the others just under 3 days. Over the UK and Ireland the seamless version blends in UKV, whose inner grid there is 1.5 km (with a coarser 4 km ring around it), supplied on a 2 km grid and updated every hour. Open-Meteo notes that the Met Office's open data comes with an extra delay of 4 hours.</p>
+
+    <h3 id="arpege">ARPEGE and AROME, Météo-France</h3>
+    <p>Météo-France's global model, ARPEGE, has a grid that is finest over Europe (5 km) and coarsest on the far side of the globe (24 km). It looks 4 days ahead, the shortest reach of the nine; beyond four days, Météo-France says, it mainly uses other models, chiefly ECMWF's. Over mainland France and Corsica the seamless version blends in AROME, at 1.3 km, which looks 2 days ahead and is updated every 3 hours. Open-Meteo supplies ARPEGE on a 0.25° grid worldwide and a 0.1° grid over Europe, every 6 hours.</p>
+
+    <h3 id="gem">GEM, Canada</h3>
+    <p>The Global Environmental Multiscale model of Environment and Climate Change Canada (ECCC), through its Meteorological Service of Canada. Its global system, GDPS, couples the atmosphere to an ocean and sea-ice model and runs twice a day, 10 days ahead, at 15 km. Its large-scale temperatures and winds are nudged towards the forecasts of GEML, ECCC's own AI weather model. The seamless version blends in the regional RDPS (10 km, Canada and the United States, 84 hours ahead) and the high-resolution HRDPS (2.5 km, most of Canada, 48 hours ahead).</p>
+
+    <h3 id="jma">JMA, Japan</h3>
+    <p>The Global Spectral Model (GSM) of the Japan Meteorological Agency, which has made numerical weather forecasts since 1959. JMA runs it on a 0.125° grid four times a day: 11 days ahead from 00 and 12 UTC, 5.5 days from 06 and 18 UTC. Because of licence restrictions only a limited version of JMA's data is available through Open-Meteo, which supplies the global model at 0.5° (about 55 km), the coarsest grid in this comparison. Over Japan and its surroundings the seamless version blends in JMA's 5 km MSM, renewed every 3 hours.</p>
+
+    <h3 id="cma">CMA GRAPES, China</h3>
+    <p>The Global/Regional Assimilation and Prediction Enhanced System (GRAPES), developed independently by the China Meteorological Administration, China's national weather agency under the State Council. Open-Meteo supplies it on a 0.125° grid in 3-hour steps from four runs a day: 10 days ahead from the 00 and 12 UTC runs, 5 days from the others. Open-Meteo calls it "GFS GRAPES"; it is not NOAA's GFS.</p>
+  </section>
+
+  <section class="acc-card acc-text" aria-labelledby="whyTitle">
+    <h2 id="whyTitle">Why the models disagree</h2>
+    <p>Every model starts from its own picture of the present, and the starting point matters a great deal: a March 2026 report by NOAA's Science Advisory Board cites results suggesting that GFS forecasts are about as accurate as ECMWF's when GFS starts from ECMWF's initial conditions. Then come different grids (a 2 km model can show a sea breeze or a mountain shower that a 25 km one smooths out), different physics and different timing: each model runs on its own schedule, so at any moment some forecasts are a few hours fresher than others.</p>
+    <p>The forecast table shows the result: for every day, the lowest, the mean and the highest value across the nine models, so you can see at a glance where they agree and where they do not.</p>
+    <p class="acc-links"><a href="/">Open the forecast table</a></p>
+  </section>
+
+  <section class="acc-card acc-text" aria-labelledby="bestTitle">
+    <h2 id="bestTitle">Which one is most accurate?</h2>
+    <p>In the scores that weather centres exchange through the World Meteorological Organization, ECMWF's IFS has led the other global models, NOAA's GFS among them, for upper-air forecasts several days ahead (the large-scale pattern of highs and lows), outside the tropics in both hemispheres. That is from ECMWF's own 2026 evaluation of its forecasts, which also says that for some surface weather, especially in the short range, other centres have partly taken the lead. At any one place, the order can be quite different.</p>
+    <p class="acc-links"><a href="/most-accurate-weather-forecast/">See how the nine have scored where you are</a></p>
+  </section>
+
+  <section class="acc-card acc-text faq" aria-labelledby="faqTitle">
+    <h2 id="faqTitle">Questions about weather models</h2>
+    <h3>What is the European weather model?</h3>
+    <p>The Integrated Forecasting System (IFS) of the European Centre for Medium-Range Weather Forecasts (ECMWF), an intergovernmental organisation supported by 35 states. It runs at about 9 km, four times a day, and its 00 and 12 UTC runs reach 15 days ahead. ECMWF also runs the AIFS, a machine-learning model.</p>
+    <h3>What is the GFS model?</h3>
+    <p>The Global Forecast System of the US National Oceanic and Atmospheric Administration (NOAA), often called the American model. It runs four times a day at about 13 km and forecasts 16 days ahead, the longest reach of the nine models here.</p>
+    <h3>What is the HRRR model?</h3>
+    <p>NOAA's High-Resolution Rapid Refresh, a 3 km model of the continental US that is updated every hour and looks 18 hours ahead, or 48 hours from its 00, 06, 12 and 18 UTC runs. The GFS forecast on this site blends it in over the US. HRRR is to be discontinued at the end of November 2026, with the Rapid Refresh Forecast System (RRFS) as its successor.</p>
+    <h3>Is the ECMWF model better than GFS?</h3>
+    <p>In the scores weather centres exchange through the World Meteorological Organization, ECMWF's IFS has led the other global models, NOAA's GFS among them, for upper-air forecasts several days ahead, according to ECMWF's own 2026 evaluation. It does not lead on every measure: for some surface weather, especially in the short range, other centres do better. At a single place the order often changes.</p>
+    <h3>What is an AI weather model?</h3>
+    <p>A model that learns how the weather evolves from decades of past weather, instead of working it out from the laws of physics step by step. ECMWF's AIFS, one of the nine here, was trained on ERA5, a reconstruction of past weather, and on ECMWF's analyses of recent years, and it starts each forecast from the IFS's picture of the present. In ECMWF's 2026 evaluation its upper-air forecasts led the IFS's by about a third of a forecast day.</p>
+  </section>
+
+  <section class="acc-card acc-text src-list" aria-labelledby="srcTitle">
+    <h2 id="srcTitle">Sources</h2>
+    <p>All retrieved on 22 November 2026. Grids, run times and forecast lengths are from each operator where it publishes them, and otherwise from Open-Meteo, which supplies the forecasts on this site.</p>
+    <ul>
+      <li>Open-Meteo: <a href="https://open-meteo.com/en/docs" rel="noopener">Forecast API</a> and its pages for <a href="https://open-meteo.com/en/docs/ecmwf-api" rel="noopener">ECMWF</a>, <a href="https://open-meteo.com/en/docs/gfs-api" rel="noopener">GFS</a>, <a href="https://open-meteo.com/en/docs/dwd-api" rel="noopener">DWD ICON</a>, <a href="https://open-meteo.com/en/docs/ukmo-api" rel="noopener">UK Met Office</a>, <a href="https://open-meteo.com/en/docs/meteofrance-api" rel="noopener">Météo-France</a>, <a href="https://open-meteo.com/en/docs/gem-api" rel="noopener">GEM</a>, <a href="https://open-meteo.com/en/docs/jma-api" rel="noopener">JMA</a> and <a href="https://open-meteo.com/en/docs/cma-api" rel="noopener">CMA</a>; which models each seamless forecast blends in is from <a href="https://github.com/open-meteo/open-meteo/blob/main/Sources/App/Controllers/ForecastapiController.swift" rel="noopener">its source code</a>.</li>
+      <li>ECMWF: <a href="https://www.ecmwf.int/en/about/who-we-are" rel="noopener">Who we are</a>, <a href="https://www.ecmwf.int/en/forecasts/datasets/open-data" rel="noopener">Open data</a>, <a href="https://www.ecmwf.int/en/forecasts/dataset/aifs-machine-learning-data" rel="noopener">AIFS machine learning data</a>, <a href="https://confluence.ecmwf.int/display/FCST/Implementation+of+AIFS+Single+v2" rel="noopener">Implementation of AIFS Single v2</a> and <a href="https://www.ecmwf.int/en/elibrary/81748-evaluation-ecmwf-forecasts" rel="noopener">Evaluation of ECMWF forecasts</a> (Technical Memorandum 938, September 2026).</li>
+      <li>NOAA: <a href="https://www.emc.ncep.noaa.gov/emc/pages/numerical_forecast_systems/gfs.php" rel="noopener">the GFS at NCEP's Environmental Modeling Center</a>, and the Science Advisory Board's report of 10 March 2026, <a href="https://repository.library.noaa.gov/view/noaa/72840" rel="noopener">Options for Framing NOAA Weather and Water Modeling as a Foundational Component of the Broader US Weather and Water Enterprise</a>.</li>
+      <li>Deutscher Wetterdienst: <a href="https://www.dwd.de/EN/ourservices/nwp_forecast_data/nwp_forecast_data.html" rel="noopener">NWP forecast data</a>.</li>
+      <li>Met Office: <a href="https://www.metoffice.gov.uk/about-us/who-we-are" rel="noopener">Who we are</a>, <a href="https://www.metoffice.gov.uk/research/approach/modelling-systems/unified-model/weather-forecasting" rel="noopener">the Unified Model in weather forecasting</a>, and its open data for the <a href="https://registry.opendata.aws/met-office-global-deterministic/" rel="noopener">global</a> and <a href="https://registry.opendata.aws/met-office-uk-deterministic/" rel="noopener">UK</a> models.</li>
+      <li>Météo-France: <a href="https://meteofrance.com/meteo-a-z/les-modeles-de-prevision-meteo" rel="noopener">Les modèles de prévision météo</a> (in French).</li>
+      <li>Environment and Climate Change Canada: the open-data notes for <a href="https://eccc-msc.github.io/open-data/msc-data/nwp_gdps/readme_gdps_en/" rel="noopener">GDPS</a>, <a href="https://eccc-msc.github.io/open-data/msc-data/nwp_rdps/readme_rdps_en/" rel="noopener">RDPS</a> and <a href="https://eccc-msc.github.io/open-data/msc-data/nwp_hrdps/readme_hrdps_en/" rel="noopener">HRDPS</a>.</li>
+      <li>Japan Meteorological Agency: <a href="https://www.jma.go.jp/jma/en/Activities/nwp.html" rel="noopener">Numerical Weather Prediction Activities</a>.</li>
+      <li>China Meteorological Administration: <a href="https://www.cma.gov.cn/en/AboutUs/" rel="noopener">About us</a>.</li>
+    </ul>
+  </section>
+
+  <p class="footer">Free, open source (MIT). <a href="/">Weather Models</a> · <a href="/most-accurate-weather-forecast/">Most accurate weather model</a> · More tools at <a href="https://games.adamwoodland.com/">Adam's Arcade</a> · Made by <a href="https://adamwoodland.com/">Adam Woodland</a> · Questions: <a href="mailto:adam@weathermodels.app">adam@weathermodels.app</a>. Design, code and content developed with the assistance of AI (Anthropic Claude).</p>
+</main>
+</body>
+</html>
